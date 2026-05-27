@@ -316,6 +316,20 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   btn.classList.add('active');
+  flyTabActive = (id === 'fly');
+  if (!flyTabActive) {
+    // Lahkumisel peata saatmine ja nulli stikid
+    if (ctrlInterval) { clearInterval(ctrlInterval); ctrlInterval = null; }
+    axes = {lx:0, ly:0, rx:0, ry:0};
+    buttons = {ch5:false, ch6:false, ch7:false, ch8:false};
+    stickResets.forEach(fn => fn());
+  } else {
+    // Lennu-lehele sisenemisel alusta saatmine
+    if (ctrlWs && ctrlWs.readyState === 1 && !ctrlInterval)
+      ctrlInterval = setInterval(sendControl, 40);
+    else if (!ctrlWs || ctrlWs.readyState > 1)
+      connectCtrlWS();
+  }
 }
 
 function toast(msg,ok=true){
@@ -597,6 +611,7 @@ let buttons = {ch5:false, ch6:false, ch7:false, ch8:false};
 let ctrlWs = null, ctrlInterval = null;
 let armed = false;
 let editMode = false;
+let flyTabActive = false;
 
 const stickResets = [];
 
@@ -709,16 +724,16 @@ function connectCtrlWS() {
   ctrlWs = new WebSocket('ws://'+location.host+'/ws/control');
   ctrlWs.onopen = () => {
     if (ctrlInterval) clearInterval(ctrlInterval);
-    ctrlInterval = setInterval(sendControl, 40); // 25 Hz
+    if (flyTabActive) ctrlInterval = setInterval(sendControl, 40);
   };
   ctrlWs.onclose = () => {
-    if (ctrlInterval) clearInterval(ctrlInterval);
-    setTimeout(connectCtrlWS, 1000);
+    if (ctrlInterval) { clearInterval(ctrlInterval); ctrlInterval = null; }
+    if (flyTabActive) setTimeout(connectCtrlWS, 1000);
   };
 }
 
 function sendControl() {
-  if (!ctrlWs || ctrlWs.readyState !== 1) return;
+  if (!ctrlWs || ctrlWs.readyState !== 1 || !flyTabActive) return;
   const msg = {
     axes: [axes.lx, axes.ly, axes.rx, axes.ry],
     buttons: {
@@ -783,7 +798,6 @@ connectWS = function() {
   };
 };
 
-connectCtrlWS();
 connectWS();
 
 // ── LAYOUT EDITOR ──────────────────────────────────────────
