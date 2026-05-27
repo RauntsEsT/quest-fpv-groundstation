@@ -2,174 +2,472 @@
 <html lang="et">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Quest FPV Ground Station</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #0d1117;
-    color: #e6edf3;
-    font-family: system-ui, sans-serif;
-    min-height: 100vh;
-    padding: 12px;
-  }
-  h1 { font-size: 1.1rem; color: #58a6ff; margin-bottom: 12px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .card {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 14px;
-  }
-  .card h2 { font-size: 0.8rem; color: #8b949e; text-transform: uppercase; margin-bottom: 10px; }
-  .stat { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; }
-  .stat-val { color: #58a6ff; font-weight: bold; }
-  .stat-val.good { color: #3fb950; }
-  .stat-val.warn { color: #d29922; }
-  .stat-val.bad  { color: #f85149; }
-
-  /* RSSI bar */
-  .bar-wrap { background: #21262d; border-radius: 4px; height: 10px; margin-top: 3px; }
-  .bar { height: 10px; border-radius: 4px; background: #3fb950; transition: width 0.3s; }
-
-  /* Channel grid */
-  .band-label { font-size: 0.75rem; color: #8b949e; margin: 8px 0 4px; }
-  .ch-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-  .ch-btn {
-    background: #21262d;
-    border: 1px solid #30363d;
-    border-radius: 5px;
-    color: #e6edf3;
-    font-size: 0.75rem;
-    padding: 8px 2px;
-    cursor: pointer;
-    text-align: center;
-    touch-action: manipulation;
-  }
-  .ch-btn:active { background: #388bfd22; }
-  .ch-btn.active { background: #1f6feb; border-color: #58a6ff; color: #fff; }
-  .ch-freq { font-size: 0.6rem; color: #8b949e; }
-
-  /* Status dot */
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
-  .dot.on { background: #3fb950; }
-  .dot.off { background: #f85149; }
-
-  @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;padding-bottom:60px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#161b22;border-top:1px solid #30363d;display:flex;z-index:100}
+.nav-btn{flex:1;padding:10px 4px 8px;background:none;border:none;color:#8b949e;font-size:0.65rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s}
+.nav-btn svg{width:20px;height:20px}
+.nav-btn.active{color:#58a6ff}
+.page{display:none;padding:12px}
+.page.active{display:block}
+h1{font-size:1rem;color:#58a6ff;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:12px}
+.card h2{font-size:0.75rem;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:0.88rem}
+.val{color:#58a6ff;font-weight:700}
+.val.good{color:#3fb950}.val.warn{color:#d29922}.val.bad{color:#f85149}
+.bar-wrap{background:#21262d;border-radius:4px;height:8px;margin-top:2px;margin-bottom:8px}
+.bar{height:8px;border-radius:4px;background:#3fb950;transition:width .3s}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.on{background:#3fb950}.dot.off{background:#f85149}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.band-label{font-size:0.72rem;color:#8b949e;margin:10px 0 4px}
+.ch-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
+.ch-btn{background:#21262d;border:1px solid #30363d;border-radius:5px;color:#e6edf3;font-size:0.7rem;padding:7px 2px;cursor:pointer;text-align:center;touch-action:manipulation}
+.ch-btn:active{background:#388bfd22}
+.ch-btn.active{background:#1f6feb;border-color:#58a6ff;color:#fff}
+.ch-freq{font-size:0.58rem;color:#8b949e}
+select,input[type=text],input[type=number]{background:#21262d;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:7px 10px;font-size:0.85rem;width:100%}
+select:focus,input:focus{outline:none;border-color:#58a6ff}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:0.75rem;color:#8b949e;margin-bottom:4px}
+.range-row{margin-bottom:12px}
+.range-row label{font-size:0.75rem;color:#8b949e;display:flex;justify-content:space-between}
+input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
+.btn{background:#1f6feb;color:#fff;border:none;border-radius:6px;padding:9px 18px;font-size:0.85rem;cursor:pointer;font-weight:600;touch-action:manipulation}
+.btn:active{opacity:.8}
+.btn.sec{background:#21262d;border:1px solid #30363d;color:#e6edf3}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.telem-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.telem-item{display:flex;justify-content:space-between;font-size:0.82rem;padding:4px 0;border-bottom:1px solid #21262d}
+.telem-key{color:#8b949e}
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600}
+.tag.armed{background:#3fb95033;color:#3fb950}
+.tag.disarmed{background:#f8514933;color:#f85149}
+.ax-table{width:100%;border-collapse:collapse;font-size:0.82rem}
+.ax-table th{color:#8b949e;font-weight:500;padding:6px 4px;text-align:left;border-bottom:1px solid #30363d}
+.ax-table td{padding:6px 4px;border-bottom:1px solid #21262d;vertical-align:middle}
+.ax-table select{padding:4px 6px;font-size:0.8rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{padding:5px 12px;border-radius:20px;font-size:0.78rem;cursor:pointer;border:1px solid #30363d;background:#21262d;color:#8b949e;touch-action:manipulation;text-align:center}
+.chip.active{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#3fb950;color:#fff;padding:8px 18px;border-radius:20px;font-size:0.85rem;font-weight:600;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+@media(min-width:600px){.g2{grid-template-columns:1fr 1fr 1fr}}
 </style>
 </head>
 <body>
+
+<div id="toast" class="toast">Salvestatud</div>
+
+<!-- DASHBOARD -->
+<div id="page-dash" class="page active">
 <h1><span class="dot off" id="dot"></span>Quest FPV Ground Station</h1>
-
-<div class="grid">
-  <!-- VRX status -->
+<div class="g2">
   <div class="card">
-    <h2>Video Receiver (Foxeer Wildfire)</h2>
-    <div class="stat">
-      <span>Aktiivsagedus</span>
-      <span class="stat-val" id="freq">—</span>
-    </div>
-    <div class="stat">
-      <span>RSSI Ant A</span>
-      <span class="stat-val" id="rssi-a">—</span>
-    </div>
-    <div class="bar-wrap"><div class="bar" id="bar-a" style="width:0%"></div></div>
-    <div class="stat" style="margin-top:6px">
-      <span>RSSI Ant B</span>
-      <span class="stat-val" id="rssi-b">—</span>
-    </div>
-    <div class="bar-wrap"><div class="bar" id="bar-b" style="width:0%"></div></div>
+    <h2>Video Receiver</h2>
+    <div class="row"><span>Sagedus</span><span class="val" id="d-freq">—</span></div>
+    <div class="row"><span>RSSI A</span><span class="val" id="d-rssi-a">—</span></div>
+    <div class="bar-wrap"><div class="bar" id="d-bar-a" style="width:0"></div></div>
+    <div class="row"><span>RSSI B</span><span class="val" id="d-rssi-b">—</span></div>
+    <div class="bar-wrap"><div class="bar" id="d-bar-b" style="width:0"></div></div>
   </div>
-
-  <!-- ELRS status -->
   <div class="card">
-    <h2>ELRS TX (EMAX Aeris Link)</h2>
-    <div class="stat">
-      <span>Link Quality</span>
-      <span class="stat-val" id="lq">—</span>
-    </div>
-    <div class="bar-wrap"><div class="bar" id="bar-lq" style="width:0%"></div></div>
-    <div class="stat" style="margin-top:6px">
-      <span>SNR</span>
-      <span class="stat-val" id="snr">—</span>
-    </div>
-    <div class="stat">
-      <span>TX Power</span>
-      <span class="stat-val" id="txpwr">—</span>
-    </div>
-  </div>
-
-  <!-- Channel selector -->
-  <div class="card" style="grid-column: span 2">
-    <h2>Kanalivalik</h2>
-    <div id="ch-selector"></div>
+    <h2>ELRS Link</h2>
+    <div class="row"><span>LQ</span><span class="val" id="d-lq">—</span></div>
+    <div class="bar-wrap"><div class="bar" id="d-bar-lq" style="width:0"></div></div>
+    <div class="row"><span>SNR</span><span class="val" id="d-snr">—</span></div>
+    <div class="row"><span>TX Power</span><span class="val" id="d-txpwr">—</span></div>
   </div>
 </div>
+<div class="card">
+  <h2>Telemeetria</h2>
+  <div class="g2">
+    <div>
+      <div class="row"><span>Staatus</span><span id="d-arm" class="tag disarmed">DISARMED</span></div>
+      <div class="row"><span>Mode</span><span class="val" id="d-mode">—</span></div>
+      <div class="row"><span>Kõrgus</span><span class="val" id="d-alt">—</span></div>
+      <div class="row"><span>Kiirus</span><span class="val" id="d-spd">—</span></div>
+      <div class="row"><span>V-kiirus</span><span class="val" id="d-vspd">—</span></div>
+    </div>
+    <div>
+      <div class="row"><span>GPS fix</span><span class="val" id="d-gps">—</span></div>
+      <div class="row"><span>Kodu dist</span><span class="val" id="d-dist">—</span></div>
+      <div class="row"><span>Pinge</span><span class="val" id="d-volt">—</span></div>
+      <div class="row"><span>Vool</span><span class="val" id="d-curr">—</span></div>
+      <div class="row"><span>Aku</span><span class="val" id="d-bat">—</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- VRX -->
+<div id="page-vrx" class="page">
+<h1>Video Receiver</h1>
+<div class="card">
+  <h2>Draiver</h2>
+  <div class="form-row">
+    <label>VRX tüüp</label>
+    <select id="vrx-driver" onchange="toggleVrxUart()">
+      <option value="dummy">Dummy (testimine)</option>
+      <option value="button">Button emulation (GPIO transistorid)</option>
+      <option value="rtc6715">RTC6715 SPI (analoog, automaatne)</option>
+      <option value="foxeer_uart">Foxeer Wildfire UART</option>
+      <option value="walksnail">Walksnail Avatar (digital)</option>
+      <option value="hdzero">HDZero (digital)</option>
+      <option value="dji_o3">DJI O3/O3+ (digital)</option>
+    </select>
+  </div>
+  <div id="vrx-uart-cfg" style="display:none">
+    <div class="form-row"><label>Port</label><input type="text" id="vrx-port" value="/dev/ttyAMA3"></div>
+    <div class="form-row"><label>Baud</label><input type="number" id="vrx-baud" value="115200"></div>
+  </div>
+  <button class="btn" onclick="saveVrxCfg()">Salvesta ja rakenda</button>
+</div>
+<div class="card">
+  <h2>Kanalivalik — 5.8 GHz</h2>
+  <div id="ch-selector-58"></div>
+</div>
+<div class="card">
+  <h2>Kanalivalik — 1.2 GHz</h2>
+  <div id="ch-selector-12"></div>
+</div>
+</div>
+
+<!-- TELEMETRY -->
+<div id="page-telem" class="page">
+<h1>Telemeetria</h1>
+<div class="card">
+  <h2>Protokollid (vali aktiivsed)</h2>
+  <div class="chips" id="telem-chips">
+    <div class="chip" data-proto="mavlink" onclick="toggleProto(this)">MAVLink<br><small>ArduPilot/PX4</small></div>
+    <div class="chip" data-proto="msp" onclick="toggleProto(this)">MSP<br><small>Betaflight/iNav</small></div>
+    <div class="chip" data-proto="crsf" onclick="toggleProto(this)">CRSF<br><small>ExpressLRS/TBS</small></div>
+    <div class="chip" data-proto="smartport" onclick="toggleProto(this)">SmartPort<br><small>FrSky</small></div>
+    <div class="chip" data-proto="ltm" onclick="toggleProto(this)">LTM<br><small>iNav lightweight</small></div>
+    <div class="chip" data-proto="hott" onclick="toggleProto(this)">HoTT<br><small>Graupner</small></div>
+    <div class="chip active" data-proto="dummy" onclick="toggleProto(this)">Dummy<br><small>Testimine</small></div>
+  </div>
+</div>
+<div class="card">
+  <h2>UART seadistus</h2>
+  <div class="form-row"><label>UART port (FC telemetry)</label><input type="text" id="telem-port" value="/dev/ttyAMA4"></div>
+  <div id="telem-bauds"></div>
+  <button class="btn" onclick="saveTelemCfg()">Salvesta ja rakenda</button>
+</div>
+<div class="card">
+  <h2>Live andmed</h2>
+  <div class="telem-grid" id="telem-live"></div>
+</div>
+</div>
+
+<!-- CONTROLLER -->
+<div id="page-ctrl" class="page">
+<h1>Kontroller</h1>
+<div class="card">
+  <h2>Telgede seadistus</h2>
+  <table class="ax-table">
+    <thead><tr><th>Kanal</th><th>Allikas</th><th>Inv</th><th>Expo</th><th>Rate</th></tr></thead>
+    <tbody id="ax-rows"></tbody>
+  </table>
+</div>
+<div class="card">
+  <h2>Dead Zone</h2>
+  <div class="range-row">
+    <label>Dead zone <span id="dz-val">5%</span></label>
+    <input type="range" id="dz" min="0" max="30" value="5" oninput="document.getElementById('dz-val').textContent=this.value+'%'">
+  </div>
+</div>
+<div class="card">
+  <h2>Nuppude seadistus</h2>
+  <table class="ax-table">
+    <thead><tr><th>Kanal</th><th>Nupp</th><th>Režiim</th><th>ON</th><th>OFF</th></tr></thead>
+    <tbody id="btn-rows"></tbody>
+  </table>
+</div>
+<div class="card">
+  <h2>Failsafe väärtused</h2>
+  <div class="g2" id="fs-rows"></div>
+</div>
+<div class="btn-row">
+  <button class="btn" onclick="saveCtrCfg()">Salvesta</button>
+  <button class="btn sec" onclick="loadCfg()">Taasta</button>
+</div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('dash',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+  </button>
+  <button class="nav-btn" onclick="showPage('vrx',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12a10 10 0 0 1 20 0"/><path d="M6 12a6 6 0 0 1 12 0"/></svg>VRX
+  </button>
+  <button class="nav-btn" onclick="showPage('telem',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Telemeetria
+  </button>
+  <button class="nav-btn" onclick="showPage('ctrl',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><rect x="2" y="7" width="20" height="10" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>Kontroller
+  </button>
+</nav>
 
 <script>
-const BANDS = {
-  A: [5865,5845,5825,5805,5785,5765,5745,5725],
-  B: [5733,5752,5771,5790,5809,5828,5847,5866],
-  E: [5705,5685,5665,5645,5885,5905,5925,5945],
-  F: [5740,5760,5780,5800,5820,5840,5860,5880],
-  R: [5658,5695,5732,5769,5806,5843,5880,5917],
-};
+const BANDS_58={A:[5865,5845,5825,5805,5785,5765,5745,5725],B:[5733,5752,5771,5790,5809,5828,5847,5866],E:[5705,5685,5665,5645,5885,5905,5925,5945],F:[5740,5760,5780,5800,5820,5840,5860,5880],R:[5658,5695,5732,5769,5806,5843,5880,5917]};
+const BANDS_12={L1:[1080,1120,1160,1200,1240,1280,1320,1360],L2:[1390,1410,1430,1450,1470,1490,1510,1530]};
+const AXES_INFO={ch1_roll:'CH1 Roll',ch2_pitch:'CH2 Pitch',ch3_throttle:'CH3 Throttle',ch4_yaw:'CH4 Yaw'};
+const AXIS_SRCS=['lx','ly','rx','ry'];
+const BTN_SRCS=['btn_a','btn_b','btn_x','btn_y','btn_lg','btn_rg','btn_lt','btn_rt'];
+const BTN_MODES=['toggle','momentary'];
+const BTNS_INFO={ch5:'CH5 (AUX1/ARM)',ch6:'CH6 (AUX2/Mode)',ch7:'CH7 (AUX3)',ch8:'CH8 (AUX4)',ch9:'CH9',ch10:'CH10',ch11:'CH11',ch12:'CH12'};
+const BAUD_MAP={mavlink:57600,msp:115200,ltm:2400,smartport:57600,hott:19200};
+let cfg=null, activeBand='F', activeCh=2, activeProtos=new Set(['dummy']);
 
-let activeBand = "F", activeCh = 2;
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
 
-function buildChannelGrid() {
-  const sel = document.getElementById("ch-selector");
-  Object.entries(BANDS).forEach(([band, freqs]) => {
-    const label = document.createElement("div");
-    label.className = "band-label";
-    label.textContent = `Band ${band}`;
-    sel.appendChild(label);
-    const grid = document.createElement("div");
-    grid.className = "ch-grid";
-    freqs.forEach((freq, i) => {
-      const btn = document.createElement("button");
-      btn.className = "ch-btn" + (band === activeBand && i+1 === activeCh ? " active" : "");
-      btn.id = `ch-${band}-${i+1}`;
-      btn.innerHTML = `<div>CH${i+1}</div><div class="ch-freq">${freq}</div>`;
-      btn.onclick = () => selectChannel(band, i+1);
+function toast(msg,ok=true){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.background=ok?'#3fb950':'#f85149';
+  el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+async function loadCfg(){
+  try{
+    const r=await fetch('/api/config'); cfg=await r.json();
+    applyVrxCfg(); applyTelemCfg(); applyCtrlCfg();
+  }catch(e){ console.warn('Config load failed',e); }
+}
+
+// VRX
+function buildChannelGrid(container,bands,prefix){
+  container.innerHTML='';
+  Object.entries(bands).forEach(([band,freqs])=>{
+    const lbl=document.createElement('div'); lbl.className='band-label'; lbl.textContent='Band '+band; container.appendChild(lbl);
+    const grid=document.createElement('div'); grid.className='ch-grid';
+    freqs.forEach((freq,i)=>{
+      const btn=document.createElement('button');
+      btn.className='ch-btn'+(band===activeBand&&i+1===activeCh?' active':'');
+      btn.id='ch-'+prefix+'-'+band+'-'+(i+1);
+      btn.innerHTML='<div>CH'+(i+1)+'</div><div class="ch-freq">'+freq+'</div>';
+      btn.onclick=()=>selectChannel(band,i+1,prefix);
       grid.appendChild(btn);
     });
-    sel.appendChild(grid);
+    container.appendChild(grid);
   });
 }
 
-async function selectChannel(band, ch) {
-  document.querySelectorAll(".ch-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById(`ch-${band}-${ch}`)?.classList.add("active");
-  activeBand = band; activeCh = ch;
-  await fetch(`/api/vrx/channel?band=${band}&channel=${ch}`, { method: "POST" });
+async function selectChannel(band,ch,prefix){
+  document.querySelectorAll('.ch-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('ch-'+prefix+'-'+band+'-'+ch)?.classList.add('active');
+  activeBand=band; activeCh=ch;
+  await fetch('/api/vrx/channel?band='+band+'&channel='+ch,{method:'POST'});
 }
 
-function lqClass(v) { return v > 80 ? "good" : v > 50 ? "warn" : "bad"; }
+function toggleVrxUart(){
+  const d=document.getElementById('vrx-driver').value;
+  document.getElementById('vrx-uart-cfg').style.display=['foxeer_uart','rtc6715'].includes(d)?'':'none';
+}
 
-function connectWS() {
-  const ws = new WebSocket(`ws://${location.host}/ws/status`);
-  const dot = document.getElementById("dot");
+function applyVrxCfg(){
+  if(!cfg)return;
+  document.getElementById('vrx-driver').value=cfg.vrx?.driver||'dummy';
+  document.getElementById('vrx-port').value=cfg.vrx?.port||'/dev/ttyAMA3';
+  document.getElementById('vrx-baud').value=cfg.vrx?.baud||115200;
+  toggleVrxUart();
+}
 
-  ws.onopen = () => dot.className = "dot on";
-  ws.onclose = () => { dot.className = "dot off"; setTimeout(connectWS, 2000); };
+async function saveVrxCfg(){
+  if(!cfg)return;
+  cfg.vrx.driver=document.getElementById('vrx-driver').value;
+  cfg.vrx.port=document.getElementById('vrx-port').value;
+  cfg.vrx.baud=parseInt(document.getElementById('vrx-baud').value);
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+  toast(r.ok?'VRX salvestatud':'Viga!',r.ok);
+}
 
-  ws.onmessage = e => {
-    const d = JSON.parse(e.data);
-    document.getElementById("freq").textContent = `${d.freq} MHz (${d.band}${d.channel})`;
-    document.getElementById("rssi-a").textContent = `${d.rssi_a} dBm`;
-    document.getElementById("rssi-b").textContent = `${d.rssi_b} dBm`;
-    document.getElementById("bar-a").style.width = Math.max(0, 100 + d.rssi_a) + "%";
-    document.getElementById("bar-b").style.width = Math.max(0, 100 + d.rssi_b) + "%";
-    const lqEl = document.getElementById("lq");
-    lqEl.textContent = `${d.lq}%`;
-    lqEl.className = "stat-val " + lqClass(d.lq);
-    document.getElementById("bar-lq").style.width = d.lq + "%";
-    document.getElementById("snr").textContent = `${d.snr} dB`;
+// Telemetry
+function toggleProto(el){
+  el.classList.toggle('active');
+  activeProtos=new Set([...document.querySelectorAll('#telem-chips .chip.active')].map(c=>c.dataset.proto));
+  buildBaudCfg();
+}
+
+function buildBaudCfg(){
+  const el=document.getElementById('telem-bauds'); el.innerHTML='';
+  activeProtos.forEach(p=>{
+    if(p==='dummy'||p==='crsf')return;
+    const baud=cfg?.telemetry?.[p]?.baud||BAUD_MAP[p]||115200;
+    el.innerHTML+='<div class="form-row"><label>'+p.toUpperCase()+' baud</label><input type="number" id="baud-'+p+'" value="'+baud+'"></div>';
+  });
+}
+
+function applyTelemCfg(){
+  if(!cfg)return;
+  const drivers=cfg.telemetry?.drivers||['dummy'];
+  activeProtos=new Set(drivers);
+  document.querySelectorAll('#telem-chips .chip').forEach(c=>c.classList.toggle('active',activeProtos.has(c.dataset.proto)));
+  document.getElementById('telem-port').value=cfg.telemetry?.mavlink?.port||'/dev/ttyAMA4';
+  buildBaudCfg();
+}
+
+async function saveTelemCfg(){
+  if(!cfg)return;
+  cfg.telemetry.drivers=[...activeProtos];
+  const port=document.getElementById('telem-port').value;
+  activeProtos.forEach(p=>{
+    if(p==='dummy'||p==='crsf')return;
+    if(!cfg.telemetry[p])cfg.telemetry[p]={};
+    cfg.telemetry[p].port=port;
+    const bi=document.getElementById('baud-'+p);
+    if(bi)cfg.telemetry[p].baud=parseInt(bi.value);
+  });
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+  toast(r.ok?'Telemeetria salvestatud':'Viga!',r.ok);
+}
+
+// Controller
+function buildAxRows(){
+  if(!cfg)return;
+  const tbody=document.getElementById('ax-rows'); tbody.innerHTML='';
+  Object.entries(AXES_INFO).forEach(([key,label])=>{
+    const ax=cfg.controller.axes[key]||{src:'lx',invert:false,expo:0.3,rate:1.0};
+    const expoV=Math.round((ax.expo||0)*100), rateV=Math.round((ax.rate||1)*100);
+    tbody.innerHTML+=`<tr>
+      <td>${label}</td>
+      <td><select id="ax-src-${key}">${AXIS_SRCS.map(s=>'<option'+(ax.src===s?' selected':'')+'>'+s+'</option>').join('')}</select></td>
+      <td style="text-align:center"><input type="checkbox" id="ax-inv-${key}" ${ax.invert?'checked':''}></td>
+      <td><div style="font-size:.7rem;color:#8b949e;display:flex;justify-content:space-between">Expo <span id="ex-v-${key}">${expoV}%</span></div>
+          <input type="range" id="ax-expo-${key}" min="0" max="100" value="${expoV}" oninput="document.getElementById('ex-v-${key}').textContent=this.value+'%'"></td>
+      <td><div style="font-size:.7rem;color:#8b949e;display:flex;justify-content:space-between">Rate <span id="rt-v-${key}">${rateV}%</span></div>
+          <input type="range" id="ax-rate-${key}" min="10" max="100" value="${rateV}" oninput="document.getElementById('rt-v-${key}').textContent=this.value+'%'"></td>
+    </tr>`;
+  });
+}
+
+function buildBtnRows(){
+  if(!cfg)return;
+  const tbody=document.getElementById('btn-rows'); tbody.innerHTML='';
+  Object.entries(BTNS_INFO).forEach(([key,label])=>{
+    const b=cfg.controller.buttons[key]||{src:'btn_a',mode:'toggle',on:1.0,off:-1.0};
+    tbody.innerHTML+=`<tr>
+      <td style="font-size:.78rem">${label}</td>
+      <td><select id="btn-src-${key}">${BTN_SRCS.map(s=>'<option'+(b.src===s?' selected':'')+'>'+s+'</option>').join('')}</select></td>
+      <td><select id="btn-mode-${key}">${BTN_MODES.map(m=>'<option'+(b.mode===m?' selected':'')+'>'+m+'</option>').join('')}</select></td>
+      <td><input type="number" id="btn-on-${key}" value="${b.on}" step="0.1" style="width:58px;padding:4px 6px"></td>
+      <td><input type="number" id="btn-off-${key}" value="${b.off}" step="0.1" style="width:58px;padding:4px 6px"></td>
+    </tr>`;
+  });
+}
+
+function buildFsRows(){
+  if(!cfg)return;
+  const el=document.getElementById('fs-rows'); el.innerHTML='';
+  const fs=cfg.controller.failsafe||{};
+  for(let i=1;i<=8;i++){
+    const key='ch'+i, val=fs[key]??0.0;
+    el.innerHTML+='<div class="form-row"><label>CH'+i+' failsafe</label><input type="number" id="fs-'+key+'" value="'+val+'" step="0.1" min="-1" max="1"></div>';
+  }
+}
+
+function applyCtrlCfg(){
+  if(!cfg)return;
+  const dz=Math.round((cfg.controller.dead_zone||0.05)*100);
+  document.getElementById('dz').value=dz;
+  document.getElementById('dz-val').textContent=dz+'%';
+  buildAxRows(); buildBtnRows(); buildFsRows();
+}
+
+async function saveCtrCfg(){
+  if(!cfg)return;
+  cfg.controller.dead_zone=parseInt(document.getElementById('dz').value)/100;
+  Object.keys(AXES_INFO).forEach(key=>{
+    cfg.controller.axes[key]={
+      src:document.getElementById('ax-src-'+key)?.value,
+      invert:document.getElementById('ax-inv-'+key)?.checked,
+      expo:parseInt(document.getElementById('ax-expo-'+key)?.value)/100,
+      rate:parseInt(document.getElementById('ax-rate-'+key)?.value)/100,
+    };
+  });
+  Object.keys(BTNS_INFO).forEach(key=>{
+    cfg.controller.buttons[key]={
+      src:document.getElementById('btn-src-'+key)?.value,
+      mode:document.getElementById('btn-mode-'+key)?.value,
+      on:parseFloat(document.getElementById('btn-on-'+key)?.value),
+      off:parseFloat(document.getElementById('btn-off-'+key)?.value),
+    };
+  });
+  for(let i=1;i<=8;i++){const key='ch'+i;cfg.controller.failsafe[key]=parseFloat(document.getElementById('fs-'+key)?.value||0);}
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+  toast(r.ok?'Kontroller salvestatud':'Viga!',r.ok);
+}
+
+// WebSocket
+function lqClass(v){return v>80?'good':v>50?'warn':'bad'}
+function vClass(v){return v>14?'good':v>12?'warn':'bad'}
+
+function connectWS(){
+  const ws=new WebSocket('ws://'+location.host+'/ws/status');
+  const dot=document.getElementById('dot');
+  ws.onopen=()=>dot.className='dot on';
+  ws.onclose=()=>{dot.className='dot off';setTimeout(connectWS,2000);};
+  ws.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    document.getElementById('d-freq').textContent=d.freq?(d.freq+' MHz ('+d.band+d.channel+')'):'—';
+    document.getElementById('d-rssi-a').textContent=d.rssi_a!==undefined?d.rssi_a+' dBm':'—';
+    document.getElementById('d-rssi-b').textContent=d.rssi_b!==undefined?d.rssi_b+' dBm':'—';
+    document.getElementById('d-bar-a').style.width=Math.max(0,100+d.rssi_a)+'%';
+    document.getElementById('d-bar-b').style.width=Math.max(0,100+d.rssi_b)+'%';
+    const lqEl=document.getElementById('d-lq');
+    lqEl.textContent=d.lq+'%'; lqEl.className='val '+lqClass(d.lq);
+    document.getElementById('d-bar-lq').style.width=d.lq+'%';
+    document.getElementById('d-snr').textContent=d.snr+' dB';
+    document.getElementById('d-txpwr').textContent=d.txpwr?(d.txpwr+' mW'):'—';
+    const t=d.telem||{};
+    const armEl=document.getElementById('d-arm');
+    if(t.armed!==undefined){armEl.textContent=t.armed?'ARMED':'DISARMED';armEl.className='tag '+(t.armed?'armed':'disarmed');}
+    document.getElementById('d-mode').textContent=t.flight_mode||'—';
+    document.getElementById('d-alt').textContent=t.altitude_rel_m!=null?t.altitude_rel_m+'m':'—';
+    document.getElementById('d-spd').textContent=t.speed_ms!=null?t.speed_ms+'m/s':'—';
+    document.getElementById('d-vspd').textContent=t.vertical_speed_ms!=null?t.vertical_speed_ms+'m/s':'—';
+    document.getElementById('d-gps').textContent=t.gps_fix!=null?(['—','—','2D','3D'][t.gps_fix]||t.gps_fix):'—';
+    document.getElementById('d-dist').textContent=t.home_distance_m!=null?t.home_distance_m+'m':'—';
+    const voltEl=document.getElementById('d-volt');
+    voltEl.textContent=t.voltage_v?t.voltage_v+'V':'—'; voltEl.className='val '+vClass(t.voltage_v||0);
+    document.getElementById('d-curr').textContent=t.current_a!=null?t.current_a+'A':'—';
+    const batEl=document.getElementById('d-bat');
+    if(t.battery_pct!=null){batEl.textContent=t.battery_pct+'%';batEl.className='val '+lqClass(t.battery_pct);}
+    buildTelemLive(t);
   };
 }
 
-buildChannelGrid();
+function buildTelemLive(t){
+  const fields=[
+    ['Protokoll',t.protocol],['Ühendus',t.connected?'✅':'❌'],
+    ['Staatus',t.armed?'ARMED':'DISARMED'],['Mode',t.flight_mode],
+    ['Kõrgus abs',t.altitude_m!=null?t.altitude_m+'m':'—'],['Kõrgus rel',t.altitude_rel_m!=null?t.altitude_rel_m+'m':'—'],
+    ['Kiirus',t.speed_ms!=null?t.speed_ms+'m/s':'—'],['V-kiirus',t.vertical_speed_ms!=null?t.vertical_speed_ms+'m/s':'—'],
+    ['Kurss',t.heading_deg!=null?t.heading_deg+'°':'—'],['Roll',t.roll_deg!=null?t.roll_deg+'°':'—'],
+    ['Pitch',t.pitch_deg!=null?t.pitch_deg+'°':'—'],['GPS fix',t.gps_fix!=null?t.gps_fix:'—'],
+    ['Sateliite',t.satellites],['Lat',t.lat!=null?t.lat.toFixed(5):'—'],
+    ['Lon',t.lon!=null?t.lon.toFixed(5):'—'],['Kodu dist',t.home_distance_m!=null?t.home_distance_m+'m':'—'],
+    ['Pinge',t.voltage_v!=null?t.voltage_v+'V':'—'],['Vool',t.current_a!=null?t.current_a+'A':'—'],
+    ['Kulutus',t.capacity_used_mah!=null?t.capacity_used_mah+'mAh':'—'],['Aku %',t.battery_pct!=null?t.battery_pct+'%':'—'],
+    ['RSSI',t.rssi_pct!=null?t.rssi_pct+'%':'—'],['LQ',t.link_quality!=null?t.link_quality+'%':'—'],
+    ['SNR',t.snr_db!=null?t.snr_db+'dB':'—'],['TX power',t.tx_power_mw!=null?t.tx_power_mw+'mW':'—'],
+  ];
+  document.getElementById('telem-live').innerHTML=fields.map(([k,v])=>'<div class="telem-item"><span class="telem-key">'+k+'</span><span class="val">'+(v??'—')+'</span></div>').join('');
+}
+
+buildChannelGrid(document.getElementById('ch-selector-58'),BANDS_58,'58');
+buildChannelGrid(document.getElementById('ch-selector-12'),BANDS_12,'12');
+loadCfg();
 connectWS();
 </script>
 </body>

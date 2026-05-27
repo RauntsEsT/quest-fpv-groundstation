@@ -4,14 +4,15 @@ import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from fastapi import Request
 import uvicorn
+import config_manager
 
 log = logging.getLogger("web_server")
-
 app = FastAPI(title="Quest FPV Ground Station")
 
 
-def create_app(vrx, elrs, video_streamer, telem=None):
+def create_app(vrx, elrs, video_streamer, telem=None, ctrl=None):
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
@@ -22,28 +23,35 @@ def create_app(vrx, elrs, video_streamer, telem=None):
     async def get_status():
         return {
             "vrx": {
-                "band":          vrx.status.band,
-                "channel":       vrx.status.channel,
+                "band": vrx.status.band, "channel": vrx.status.channel,
                 "frequency_mhz": vrx.status.frequency_mhz,
-                "rssi_a":        vrx.status.rssi_a,
-                "rssi_b":        vrx.status.rssi_b,
-                "driver":        vrx.status.driver,
-                "connected":     vrx.status.connected,
+                "rssi_a": vrx.status.rssi_a, "rssi_b": vrx.status.rssi_b,
+                "driver": vrx.status.driver, "connected": vrx.status.connected,
             },
             "elrs": {
-                "rssi_ant1":   elrs.stats.rssi_ant1,
-                "rssi_ant2":   elrs.stats.rssi_ant2,
+                "rssi_ant1": elrs.stats.rssi_ant1, "rssi_ant2": elrs.stats.rssi_ant2,
                 "link_quality": elrs.stats.link_quality,
-                "snr":          elrs.stats.snr,
-                "tx_power_mw":  elrs.stats.tx_power_mw,
+                "snr": elrs.stats.snr, "tx_power_mw": elrs.stats.tx_power_mw,
             },
             "video_port": video_streamer.port,
-            "telemetry":  telem.get_dict() if telem else {},
+            "telemetry": telem.get_dict() if telem else {},
         }
 
     @app.get("/api/telemetry")
     async def get_telemetry():
         return telem.get_dict() if telem else {}
+
+    @app.get("/api/config")
+    async def get_config():
+        return config_manager.load()
+
+    @app.post("/api/config")
+    async def post_config(request: Request):
+        cfg = await request.json()
+        config_manager.save(cfg)
+        if ctrl:
+            ctrl.update_config(cfg)
+        return {"ok": True}
 
     @app.post("/api/vrx/channel")
     async def set_channel(band: str, channel: int):
@@ -65,14 +73,12 @@ def create_app(vrx, elrs, video_streamer, telem=None):
         try:
             while True:
                 msg = {
-                    "rssi_a":  vrx.status.rssi_a,
-                    "rssi_b":  vrx.status.rssi_b,
-                    "lq":      elrs.stats.link_quality,
-                    "snr":     elrs.stats.snr,
-                    "band":    vrx.status.band,
-                    "channel": vrx.status.channel,
-                    "freq":    vrx.status.frequency_mhz,
-                    "telem":   telem.get_dict() if telem else {},
+                    "rssi_a": vrx.status.rssi_a, "rssi_b": vrx.status.rssi_b,
+                    "lq": elrs.stats.link_quality, "snr": elrs.stats.snr,
+                    "txpwr": elrs.stats.tx_power_mw,
+                    "band": vrx.status.band, "channel": vrx.status.channel,
+                    "freq": vrx.status.frequency_mhz,
+                    "telem": telem.get_dict() if telem else {},
                 }
                 await ws.send_text(json.dumps(msg))
                 await asyncio.sleep(0.2)
@@ -83,9 +89,9 @@ def create_app(vrx, elrs, video_streamer, telem=None):
     return app
 
 
-async def run(vrx, elrs, video_streamer, telem=None,
-              host: str = "0.0.0.0", port: int = 8080):
-    create_app(vrx, elrs, video_streamer, telem)
+async def run(vrx, elrs, video_streamer, telem=None, ctrl=None,
+              host="0.0.0.0", port=8080):
+    create_app(vrx, elrs, video_streamer, telem, ctrl)
     config = uvicorn.Config(app, host=host, port=port, log_level="warning")
     server = uvicorn.Server(config)
     log.info(f"Web UI: http://{host}:{port}")

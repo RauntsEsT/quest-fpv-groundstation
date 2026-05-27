@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import config_manager
 from vrx_manager import create_vrx
 from elrs_manager import ELRSManager
 from video_streamer import VideoStreamer
@@ -9,13 +10,10 @@ from controller_receiver import ControllerReceiver
 from telemetry_manager import TelemetryManager
 import web_server
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(name)-20s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO,
+    format="%(asctime)s %(name)-20s %(levelname)s %(message)s")
 log = logging.getLogger("main")
 
-VRX_DRIVER    = os.getenv("VRX_DRIVER",    "dummy")
 VIDEO_DEVICE  = os.getenv("VIDEO_DEVICE",  "/dev/video0")
 VIDEO_PORT    = int(os.getenv("VIDEO_PORT",    "5006"))
 ELRS_PORT     = os.getenv("ELRS_PORT",     "/dev/ttyAMA0")
@@ -25,20 +23,24 @@ WEB_PORT      = int(os.getenv("WEB_PORT",      "8080"))
 
 
 async def main():
-    vrx   = create_vrx(VRX_DRIVER)
+    cfg   = config_manager.load()
+    vrx   = create_vrx(cfg["vrx"]["driver"])
     elrs  = ELRSManager(ELRS_PORT, ELRS_BAUD)
     video = VideoStreamer(VIDEO_DEVICE, VIDEO_PORT)
-    ctrl  = ControllerReceiver(UDP_CTRL_PORT, elrs)
-    telem = TelemetryManager.from_env()
+    ctrl  = ControllerReceiver(UDP_CTRL_PORT, elrs, cfg)
+    telem = TelemetryManager(cfg["telemetry"]["drivers"],
+                             {k: cfg["telemetry"].get(k, {})
+                              for k in cfg["telemetry"]["drivers"]})
 
-    log.info(f"Quest FPV Ground Station — VRX:{VRX_DRIVER}")
+    log.info(f"Quest FPV Ground Station — VRX:{cfg['vrx']['driver']} "
+             f"TELEM:{cfg['telemetry']['drivers']}")
     await asyncio.gather(
         vrx.start(),
         elrs.start(),
         ctrl.start(),
         video.start(),
         telem.start(),
-        web_server.run(vrx, elrs, video, telem, port=WEB_PORT),
+        web_server.run(vrx, elrs, video, telem, ctrl, port=WEB_PORT),
     )
 
 
