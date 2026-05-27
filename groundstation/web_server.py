@@ -1,0 +1,84 @@
+import asyncio
+import json
+import logging
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+import uvicorn
+
+log = logging.getLogger("web_server")
+
+app = FastAPI(title="Quest FPV Ground Station")
+
+
+def create_app(vrx, elrs, video_streamer):
+    """Wire up routes with access to hardware managers."""
+
+    @app.get("/", response_class=HTMLResponse)
+    async def index():
+        with open("static/index.html") as f:
+            return f.read()
+
+    @app.get("/api/status")
+    async def get_status():
+        return {
+            "vrx": {
+                "band": vrx.status.band,
+                "channel": vrx.status.channel,
+                "frequency_mhz": vrx.status.frequency_mhz,
+                "rssi_a": vrx.status.rssi_a,
+                "rssi_b": vrx.status.rssi_b,
+            },
+            "elrs": {
+                "rssi_ant1": elrs.stats.rssi_ant1,
+                "rssi_ant2": elrs.stats.rssi_ant2,
+                "link_quality": elrs.stats.link_quality,
+                "snr": elrs.stats.snr,
+                "tx_power_mw": elrs.stats.tx_power_mw,
+            },
+            "video_port": video_streamer.port,
+        }
+
+    @app.post("/api/vrx/channel")
+    async def set_channel(band: str, channel: int):
+        vrx.set_channel(band, channel)
+        return {"ok": True, "frequency_mhz": vrx.status.frequency_mhz}
+
+    @app.post("/api/vrx/frequency")
+    async def set_frequency(freq_mhz: int):
+        vrx.set_frequency(freq_mhz)
+        return {"ok": True, "band": vrx.status.band, "channel": vrx.status.channel}
+
+    @app.get("/api/vrx/channels")
+    async def get_channels():
+        return vrx.get_all_channels()
+
+    @app.websocket("/ws/status")
+    async def websocket_status(ws: WebSocket):
+        await ws.accept()
+        try:
+            while True:
+                status = {
+                    "rssi_a": vrx.status.rssi_a,
+                    "rssi_b": vrx.status.rssi_b,
+                    "lq": elrs.stats.link_quality,
+                    "snr": elrs.stats.snr,
+                    "band": vrx.status.band,
+                    "channel": vrx.status.channel,
+                    "freq": vrx.status.frequency_mhz,
+                }
+                await ws.send_text(json.dumps(status))
+                await asyncio.sleep(0.5)
+        except WebSocketDisconnect:
+            pass
+
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    return app
+
+
+async def run(vrx, elrs, video_streamer, host: str = "0.0.0.0", port: int = 8080):
+    create_app(vrx, elrs, video_streamer)
+    config = uvicorn.Config(app, host=host, port=port, log_level="warning")
+    server = uvicorn.Server(config)
+    log.info(f"Web UI: http://{host}:{port}")
+    await server.serve()

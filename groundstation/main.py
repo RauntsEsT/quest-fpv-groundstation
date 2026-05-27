@@ -1,36 +1,39 @@
 #!/usr/bin/env python3
-"""
-Ground station middleware for Quest FPV system.
-Receives controller data via UDP from Meta Quest app,
-forwards CRSF packets to ELRS TX over UART,
-and streams video from USB capture card to Quest.
-"""
-
 import asyncio
 import logging
-from controller_receiver import ControllerReceiver
-from elrs_sender import ELRSSender
+from foxeer_vrx import FoxeerVRX
+from elrs_manager import ELRSManager
 from video_streamer import VideoStreamer
+from controller_receiver import ControllerReceiver
+import web_server
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
-log = logging.getLogger("groundstation")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)-20s %(levelname)s %(message)s"
+)
+log = logging.getLogger("main")
 
-UDP_PORT = 5005
-ELRS_UART_PORT = "/dev/ttyUSB0"
-ELRS_BAUD = 420000
-VIDEO_DEVICE = "/dev/video0"
-VIDEO_STREAM_PORT = 5006
+VIDEO_DEVICE  = "/dev/video0"
+VIDEO_PORT    = 5006
+ELRS_PORT     = "/dev/ttyAMA0"
+ELRS_BAUD     = 420000
+UDP_CTRL_PORT = 5005
+WEB_PORT      = 8080
 
 
 async def main():
-    elrs = ELRSSender(ELRS_UART_PORT, ELRS_BAUD)
-    video = VideoStreamer(VIDEO_DEVICE, VIDEO_STREAM_PORT)
-    receiver = ControllerReceiver(UDP_PORT, elrs)
+    vrx     = FoxeerVRX(VIDEO_DEVICE)
+    elrs    = ELRSManager(ELRS_PORT, ELRS_BAUD)
+    video   = VideoStreamer(VIDEO_DEVICE, VIDEO_PORT)
+    ctrl    = ControllerReceiver(UDP_CTRL_PORT, elrs)
 
-    log.info("Starting Quest FPV Ground Station")
+    log.info("Quest FPV Ground Station starting")
     await asyncio.gather(
-        receiver.start(),
+        vrx.start(),
+        elrs.start(),
+        ctrl.start(),
         video.start(),
+        web_server.run(vrx, elrs, video, port=WEB_PORT),
     )
 
 

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Quest FPV Ground Station</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 12px;
+  }
+  h1 { font-size: 1.1rem; color: #58a6ff; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .card h2 { font-size: 0.8rem; color: #8b949e; text-transform: uppercase; margin-bottom: 10px; }
+  .stat { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; }
+  .stat-val { color: #58a6ff; font-weight: bold; }
+  .stat-val.good { color: #3fb950; }
+  .stat-val.warn { color: #d29922; }
+  .stat-val.bad  { color: #f85149; }
+
+  /* RSSI bar */
+  .bar-wrap { background: #21262d; border-radius: 4px; height: 10px; margin-top: 3px; }
+  .bar { height: 10px; border-radius: 4px; background: #3fb950; transition: width 0.3s; }
+
+  /* Channel grid */
+  .band-label { font-size: 0.75rem; color: #8b949e; margin: 8px 0 4px; }
+  .ch-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .ch-btn {
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 5px;
+    color: #e6edf3;
+    font-size: 0.75rem;
+    padding: 8px 2px;
+    cursor: pointer;
+    text-align: center;
+    touch-action: manipulation;
+  }
+  .ch-btn:active { background: #388bfd22; }
+  .ch-btn.active { background: #1f6feb; border-color: #58a6ff; color: #fff; }
+  .ch-freq { font-size: 0.6rem; color: #8b949e; }
+
+  /* Status dot */
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  .dot.on { background: #3fb950; }
+  .dot.off { background: #f85149; }
+
+  @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1><span class="dot off" id="dot"></span>Quest FPV Ground Station</h1>
+
+<div class="grid">
+  <!-- VRX status -->
+  <div class="card">
+    <h2>Video Receiver (Foxeer Wildfire)</h2>
+    <div class="stat">
+      <span>Aktiivsagedus</span>
+      <span class="stat-val" id="freq">—</span>
+    </div>
+    <div class="stat">
+      <span>RSSI Ant A</span>
+      <span class="stat-val" id="rssi-a">—</span>
+    </div>
+    <div class="bar-wrap"><div class="bar" id="bar-a" style="width:0%"></div></div>
+    <div class="stat" style="margin-top:6px">
+      <span>RSSI Ant B</span>
+      <span class="stat-val" id="rssi-b">—</span>
+    </div>
+    <div class="bar-wrap"><div class="bar" id="bar-b" style="width:0%"></div></div>
+  </div>
+
+  <!-- ELRS status -->
+  <div class="card">
+    <h2>ELRS TX (EMAX Aeris Link)</h2>
+    <div class="stat">
+      <span>Link Quality</span>
+      <span class="stat-val" id="lq">—</span>
+    </div>
+    <div class="bar-wrap"><div class="bar" id="bar-lq" style="width:0%"></div></div>
+    <div class="stat" style="margin-top:6px">
+      <span>SNR</span>
+      <span class="stat-val" id="snr">—</span>
+    </div>
+    <div class="stat">
+      <span>TX Power</span>
+      <span class="stat-val" id="txpwr">—</span>
+    </div>
+  </div>
+
+  <!-- Channel selector -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Kanalivalik</h2>
+    <div id="ch-selector"></div>
+  </div>
+</div>
+
+<script>
+const BANDS = {
+  A: [5865,5845,5825,5805,5785,5765,5745,5725],
+  B: [5733,5752,5771,5790,5809,5828,5847,5866],
+  E: [5705,5685,5665,5645,5885,5905,5925,5945],
+  F: [5740,5760,5780,5800,5820,5840,5860,5880],
+  R: [5658,5695,5732,5769,5806,5843,5880,5917],
+};
+
+let activeBand = "F", activeCh = 2;
+
+function buildChannelGrid() {
+  const sel = document.getElementById("ch-selector");
+  Object.entries(BANDS).forEach(([band, freqs]) => {
+    const label = document.createElement("div");
+    label.className = "band-label";
+    label.textContent = `Band ${band}`;
+    sel.appendChild(label);
+    const grid = document.createElement("div");
+    grid.className = "ch-grid";
+    freqs.forEach((freq, i) => {
+      const btn = document.createElement("button");
+      btn.className = "ch-btn" + (band === activeBand && i+1 === activeCh ? " active" : "");
+      btn.id = `ch-${band}-${i+1}`;
+      btn.innerHTML = `<div>CH${i+1}</div><div class="ch-freq">${freq}</div>`;
+      btn.onclick = () => selectChannel(band, i+1);
+      grid.appendChild(btn);
+    });
+    sel.appendChild(grid);
+  });
+}
+
+async function selectChannel(band, ch) {
+  document.querySelectorAll(".ch-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById(`ch-${band}-${ch}`)?.classList.add("active");
+  activeBand = band; activeCh = ch;
+  await fetch(`/api/vrx/channel?band=${band}&channel=${ch}`, { method: "POST" });
+}
+
+function lqClass(v) { return v > 80 ? "good" : v > 50 ? "warn" : "bad"; }
+
+function connectWS() {
+  const ws = new WebSocket(`ws://${location.host}/ws/status`);
+  const dot = document.getElementById("dot");
+
+  ws.onopen = () => dot.className = "dot on";
+  ws.onclose = () => { dot.className = "dot off"; setTimeout(connectWS, 2000); };
+
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    document.getElementById("freq").textContent = `${d.freq} MHz (${d.band}${d.channel})`;
+    document.getElementById("rssi-a").textContent = `${d.rssi_a} dBm`;
+    document.getElementById("rssi-b").textContent = `${d.rssi_b} dBm`;
+    document.getElementById("bar-a").style.width = Math.max(0, 100 + d.rssi_a) + "%";
+    document.getElementById("bar-b").style.width = Math.max(0, 100 + d.rssi_b) + "%";
+    const lqEl = document.getElementById("lq");
+    lqEl.textContent = `${d.lq}%`;
+    lqEl.className = "stat-val " + lqClass(d.lq);
+    document.getElementById("bar-lq").style.width = d.lq + "%";
+    document.getElementById("snr").textContent = `${d.snr} dB`;
+  };
+}
+
+buildChannelGrid();
+connectWS();
+</script>
+</body>
+</html>
