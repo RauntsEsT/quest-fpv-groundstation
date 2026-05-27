@@ -113,3 +113,30 @@ class ChannelMapper:
             self._btn_states[src] = pressed
 
         return tuple(channels)
+
+    def map_web_input(self, axes: list, buttons: dict) -> tuple:
+        """Web UI input: axes=[lx,ly,rx,ry], buttons={ch5:bool,...}.
+        Applies expo/rate/deadzone to axes; converts bool buttons to on/off values."""
+        dz = self._cfg.get("dead_zone", 0.05)
+        channels = [0.0] * 16
+
+        for ch_name, acfg in self._cfg["axes"].items():
+            src_idx = AXIS_MAP.get(acfg["src"], 0)
+            raw = axes[src_idx] if src_idx < len(axes) else 0.0
+            val = _dead_zone(raw, dz)
+            val = _expo(val, acfg.get("expo", 0.0))
+            val *= acfg.get("rate", 1.0)
+            if acfg.get("invert", False):
+                val = -val
+            ch_idx = {"ch1_roll": 0, "ch2_pitch": 1,
+                      "ch3_throttle": 2, "ch4_yaw": 3}.get(ch_name, 0)
+            channels[ch_idx] = max(-1.0, min(1.0, val))
+
+        for ch_name, bcfg in self._cfg["buttons"].items():
+            ch_idx = int(ch_name.replace("ch", "")) - 1
+            if ch_idx >= 16:
+                continue
+            is_on = bool(buttons.get(ch_name, False))
+            channels[ch_idx] = bcfg["on"] if is_on else bcfg["off"]
+
+        return tuple(channels)
