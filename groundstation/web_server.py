@@ -85,6 +85,24 @@ def create_app(vrx, elrs, video_streamer, telem=None, ctrl=None):
         except WebSocketDisconnect:
             pass
 
+
+    @app.websocket("/ws/control")
+    async def websocket_control(ws: WebSocket):
+        await ws.accept()
+        log.info("Web controller connected")
+        try:
+            while True:
+                text = await ws.receive_text()
+                if not ctrl or not elrs:
+                    continue
+                msg = json.loads(text)
+                axes = msg.get("axes", [0.0, 0.0, 0.0, 0.0])
+                buttons = msg.get("buttons", {})
+                channels = ctrl.mapper.map_web_input(axes, buttons)
+                elrs.send_channels(channels)
+        except WebSocketDisconnect:
+            log.info("Web controller disconnected")
+
     app.mount("/static", StaticFiles(directory="static"), name="static")
     return app
 
