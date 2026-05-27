@@ -570,8 +570,8 @@ function setupStick(zoneId, knobId, axX, axY, springY) {
     let dx = cx - c.x, dy = cy - c.y;
     const dist = Math.sqrt(dx*dx + dy*dy);
     if (dist > MAX_R) { dx = dx/dist*MAX_R; dy = dy/dist*MAX_R; }
-    knob.style.left = (STICK_R + dx) + 'px';
-    knob.style.top  = (STICK_R + dy) + 'px';
+    knob.style.left = (STICK_R + dx - KNOB_R) + 'px';
+    knob.style.top  = (STICK_R + dy - KNOB_R) + 'px';
     knob.style.transform = 'none';
     knob.classList.add('active');
     axes[axX] = parseFloat((dx / MAX_R).toFixed(3));
