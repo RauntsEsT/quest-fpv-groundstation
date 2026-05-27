@@ -83,7 +83,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 #edit-save-bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;display:none;gap:8px;background:#161b22f0;padding:8px 14px;border-radius:20px;border:1px solid #30363d}
 .btn-edit-layout{padding:5px 10px;background:none;border:1px solid #30363d;border-radius:6px;color:#8b949e;font-size:0.75rem;cursor:pointer;touch-action:manipulation;line-height:1.4;white-space:nowrap}
 .btn-edit-layout.active{border-color:#58a6ff;color:#58a6ff;background:#1f6feb22}
-.stick-zone{position:relative;width:160px;height:160px;background:#161b22;border:1px solid #30363d;border-radius:50%;flex-shrink:0;touch-action:none}
+.stick-zone{position:relative;width:160px;height:160px;background:#161b22;border:1px solid #30363d;border-radius:50%;flex-shrink:0;touch-action:none;overflow:hidden}
 .stick-knob{position:absolute;width:56px;height:56px;background:#58a6ff;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);transition:background .2s;pointer-events:none}
 .stick-knob.active{background:#1f6feb}
 .stick-cross{position:absolute;inset:0;pointer-events:none}
@@ -623,8 +623,8 @@ function setupStick(zoneId, knobId, axX, axY, springY) {
   let curDX = 0, curDY = 0;
 
   function applyKnob(dx, dy) {
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist > MAX_R) { dx = dx/dist*MAX_R; dy = dy/dist*MAX_R; }
+    dx = Math.max(-MAX_R, Math.min(MAX_R, dx));
+    dy = Math.max(-MAX_R, Math.min(MAX_R, dy));
     curDX = dx; curDY = dy;
     knob.style.left = (STICK_R + dx - KNOB_R) + 'px';
     knob.style.top  = (STICK_R + dy - KNOB_R) + 'px';
