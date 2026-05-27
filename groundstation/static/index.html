@@ -54,6 +54,13 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .chip{padding:5px 12px;border-radius:20px;font-size:0.78rem;cursor:pointer;border:1px solid #30363d;background:#21262d;color:#8b949e;touch-action:manipulation;text-align:center}
 .chip.active{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
+.ch-live-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #21262d}
+.ch-live-lbl{color:#8b949e;font-size:0.72rem;min-width:30px}
+.ch-live-name{color:#8b949e;font-size:0.7rem;min-width:62px}
+.ch-bar-wrap{flex:1;height:7px;background:#21262d;border-radius:4px;position:relative;overflow:hidden}
+.ch-bar-fill{position:absolute;top:0;height:100%;background:#388bfd;border-radius:4px;transition:width .07s,left .07s}
+.ch-live-val{min-width:42px;text-align:right;font-size:0.75rem;font-weight:700;color:#58a6ff;font-variant-numeric:tabular-nums}
+.ch-live-val.pos{color:#3fb950}.ch-live-val.neg{color:#f0883e}.ch-live-val.zero{color:#484f58}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#3fb950;color:#fff;padding:8px 18px;border-radius:20px;font-size:0.85rem;font-weight:600;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
 @media(min-width:600px){.g2{grid-template-columns:1fr 1fr 1fr}}
@@ -267,6 +274,10 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 <div class="btn-row">
   <button class="btn" onclick="saveCtrCfg()">Salvesta</button>
   <button class="btn sec" onclick="loadCfg()">Taasta</button>
+</div>
+<div class="card" style="margin-top:12px">
+  <h2>Live kanalid</h2>
+  <div id="ch-live-grid"></div>
 </div>
 </div>
 
@@ -540,8 +551,40 @@ function buildTelemLive(t){
   document.getElementById('telem-live').innerHTML=fields.map(([k,v])=>'<div class="telem-item"><span class="telem-key">'+k+'</span><span class="val">'+(v??'—')+'</span></div>').join('');
 }
 
+const CH_NAMES = ['Roll','Pitch','Throttle','Yaw','ARM','Mode','AUX3','AUX4',
+                  'CH9','CH10','CH11','CH12','CH13','CH14','CH15','CH16'];
+
+function buildChLiveGrid() {
+  const grid = document.getElementById('ch-live-grid');
+  if (!grid) return;
+  grid.innerHTML = CH_NAMES.map((name, i) =>
+    `<div class="ch-live-row">
+      <span class="ch-live-lbl">CH${i+1}</span>
+      <div class="ch-bar-wrap"><div class="ch-bar-fill" id="ch-bar-${i}"></div></div>
+      <span class="ch-live-val zero" id="ch-val-${i}">0.00</span>
+      <span class="ch-live-name">${name}</span>
+    </div>`
+  ).join('');
+}
+
+function updateChLive(channels) {
+  channels.forEach((v, i) => {
+    const bar = document.getElementById('ch-bar-'+i);
+    const val = document.getElementById('ch-val-'+i);
+    if (!bar || !val) return;
+    // Bar: 50% = 0, fill from center toward value
+    const pct50 = 50;
+    const fill  = Math.abs(v) * 50;
+    if (v >= 0) { bar.style.left = pct50+'%'; bar.style.width = fill+'%'; }
+    else        { bar.style.left = (pct50 - fill)+'%'; bar.style.width = fill+'%'; }
+    val.textContent = v.toFixed(2);
+    val.className = 'ch-live-val ' + (v >  0.02 ? 'pos' : v < -0.02 ? 'neg' : 'zero');
+  });
+}
+
 buildChannelGrid(document.getElementById('ch-selector-58'),BANDS_58,'58');
 buildChannelGrid(document.getElementById('ch-selector-12'),BANDS_12,'12');
+buildChLiveGrid();
 loadCfg();
 
 // ── JOYSTICK ──────────────────────────────────────────────
@@ -736,6 +779,7 @@ connectWS = function() {
     const batEl=document.getElementById('d-bat');
     if(t.battery_pct!=null){batEl.textContent=t.battery_pct+'%';batEl.className='val '+lqClass(t.battery_pct);}
     buildTelemLive(t);
+    if(d.channels) updateChLive(d.channels);
   };
 };
 

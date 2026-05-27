@@ -13,6 +13,8 @@ app = FastAPI(title="Quest FPV Ground Station")
 
 
 def create_app(vrx, elrs, video_streamer, telem=None, ctrl=None):
+    _last_channels = [0.0] * 16
+
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
@@ -79,6 +81,7 @@ def create_app(vrx, elrs, video_streamer, telem=None, ctrl=None):
                     "band": vrx.status.band, "channel": vrx.status.channel,
                     "freq": vrx.status.frequency_mhz,
                     "telem": telem.get_dict() if telem else {},
+                    "channels": list(_last_channels),
                 }
                 await ws.send_text(json.dumps(msg))
                 await asyncio.sleep(0.2)
@@ -100,6 +103,7 @@ def create_app(vrx, elrs, video_streamer, telem=None, ctrl=None):
                 buttons = msg.get("buttons", {})
                 channels = ctrl.mapper.map_web_input(axes, buttons)
                 elrs.send_channels(channels)
+                _last_channels[:] = channels
         except WebSocketDisconnect:
             log.info("Web controller disconnected")
 
