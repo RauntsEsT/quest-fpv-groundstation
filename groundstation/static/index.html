@@ -555,52 +555,67 @@ let ctrlWs = null, ctrlInterval = null;
 let armed = false;
 let editMode = false;
 
-function stickCenter(el) {
-  const r = el.getBoundingClientRect();
-  return {x: r.left + r.width/2, y: r.top + r.height/2};
-}
+const stickResets = [];
 
 function setupStick(zoneId, knobId, axX, axY, springY) {
   const zone = document.getElementById(zoneId);
   const knob = document.getElementById(knobId);
   let tid = null;
+  let startTX, startTY, startDX = 0, startDY = 0;
+  let curDX = 0, curDY = 0;
 
-  function move(cx, cy) {
-    const c = stickCenter(zone);
-    let dx = cx - c.x, dy = cy - c.y;
+  function applyKnob(dx, dy) {
     const dist = Math.sqrt(dx*dx + dy*dy);
     if (dist > MAX_R) { dx = dx/dist*MAX_R; dy = dy/dist*MAX_R; }
+    curDX = dx; curDY = dy;
     knob.style.left = (STICK_R + dx - KNOB_R) + 'px';
     knob.style.top  = (STICK_R + dy - KNOB_R) + 'px';
     knob.style.transform = 'none';
     knob.classList.add('active');
     axes[axX] = parseFloat((dx / MAX_R).toFixed(3));
-    axes[axY] = parseFloat((-dy / MAX_R).toFixed(3)); // invert Y
+    axes[axY] = parseFloat((-dy / MAX_R).toFixed(3));
   }
 
   function release() {
     knob.classList.remove('active');
-    // Spring back — throttle (ly) stays if springY=false
     axes[axX] = 0;
-    if (springY) axes[axY] = 0;
-    knob.style.left = '50%';
-    knob.style.top  = '50%';
-    knob.style.transform = 'translate(-50%,-50%)';
+    if (springY) {
+      axes[axY] = 0;
+      curDX = 0; curDY = 0;
+      knob.style.left = '50%'; knob.style.top = '50%';
+      knob.style.transform = 'translate(-50%,-50%)';
+    } else {
+      applyKnob(0, curDY); // yaw springs back, throttle holds position
+    }
     tid = null;
   }
+
+  stickResets.push(() => {
+    curDX = 0; curDY = 0;
+    axes[axX] = 0; axes[axY] = 0;
+    knob.classList.remove('active');
+    knob.style.left = '50%'; knob.style.top = '50%';
+    knob.style.transform = 'translate(-50%,-50%)';
+  });
 
   zone.addEventListener('touchstart', e => {
     if (editMode) return;
     e.preventDefault();
     tid = e.changedTouches[0].identifier;
-    move(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    startTX = e.changedTouches[0].clientX;
+    startTY = e.changedTouches[0].clientY;
+    startDX = curDX; startDY = curDY;
+    knob.classList.add('active');
   }, {passive:false});
 
   zone.addEventListener('touchmove', e => {
     if (editMode) return;
     e.preventDefault();
     for (const t of e.changedTouches) {
-      if (t.identifier === tid) { move(t.clientX, t.clientY); break; }
+      if (t.identifier === tid) {
+        applyKnob(startDX + (t.clientX - startTX), startDY + (t.clientY - startTY));
+        break;
+      }
     }
   }, {passive:false});
 
@@ -609,11 +624,19 @@ function setupStick(zoneId, knobId, axX, axY, springY) {
     for (const t of e.changedTouches) { if (t.identifier === tid) { release(); break; } }
   });
 
-  // Mouse fallback (desktop testing)
   let dragging = false;
-  zone.addEventListener('mousedown', e => { if (editMode) return; dragging=true; move(e.clientX, e.clientY); });
-  document.addEventListener('mousemove', e => { if(dragging) move(e.clientX, e.clientY); });
-  document.addEventListener('mouseup', () => { if(dragging){ dragging=false; release(); } });
+  zone.addEventListener('mousedown', e => {
+    if (editMode) return;
+    dragging = true;
+    startTX = e.clientX; startTY = e.clientY;
+    startDX = curDX; startDY = curDY;
+    knob.classList.add('active');
+  });
+  document.addEventListener('mousemove', e => {
+    if (dragging && !editMode)
+      applyKnob(startDX + (e.clientX - startTX), startDY + (e.clientY - startTY));
+  });
+  document.addEventListener('mouseup', () => { if (dragging) { dragging = false; release(); } });
 }
 
 // Left: throttle=ly (no spring), yaw=lx (spring)
@@ -776,16 +799,7 @@ function setEditMode(val) {
   document.getElementById('edit-save-bar').style.display = val ? 'flex' : 'none';
   const btn = document.getElementById('edit-layout-btn');
   if (btn) btn.classList.toggle('active', val);
-  // Reset stick knobs when entering edit mode
-  if (val) {
-    axes = {lx:0, ly:0, rx:0, ry:0};
-    ['knob-l','knob-r'].forEach(id => {
-      const k = document.getElementById(id);
-      k.style.left = '50%'; k.style.top = '50%';
-      k.style.transform = 'translate(-50%,-50%)';
-      k.classList.remove('active');
-    });
-  }
+  if (val) stickResets.forEach(fn => fn());
 }
 
 function setupWidgetDrag(widgetId) {
