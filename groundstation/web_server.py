@@ -11,8 +11,7 @@ log = logging.getLogger("web_server")
 app = FastAPI(title="Quest FPV Ground Station")
 
 
-def create_app(vrx, elrs, video_streamer):
-    """Wire up routes with access to hardware managers."""
+def create_app(vrx, elrs, video_streamer, telem=None):
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
@@ -23,21 +22,28 @@ def create_app(vrx, elrs, video_streamer):
     async def get_status():
         return {
             "vrx": {
-                "band": vrx.status.band,
-                "channel": vrx.status.channel,
+                "band":          vrx.status.band,
+                "channel":       vrx.status.channel,
                 "frequency_mhz": vrx.status.frequency_mhz,
-                "rssi_a": vrx.status.rssi_a,
-                "rssi_b": vrx.status.rssi_b,
+                "rssi_a":        vrx.status.rssi_a,
+                "rssi_b":        vrx.status.rssi_b,
+                "driver":        vrx.status.driver,
+                "connected":     vrx.status.connected,
             },
             "elrs": {
-                "rssi_ant1": elrs.stats.rssi_ant1,
-                "rssi_ant2": elrs.stats.rssi_ant2,
+                "rssi_ant1":   elrs.stats.rssi_ant1,
+                "rssi_ant2":   elrs.stats.rssi_ant2,
                 "link_quality": elrs.stats.link_quality,
-                "snr": elrs.stats.snr,
-                "tx_power_mw": elrs.stats.tx_power_mw,
+                "snr":          elrs.stats.snr,
+                "tx_power_mw":  elrs.stats.tx_power_mw,
             },
             "video_port": video_streamer.port,
+            "telemetry":  telem.get_dict() if telem else {},
         }
+
+    @app.get("/api/telemetry")
+    async def get_telemetry():
+        return telem.get_dict() if telem else {}
 
     @app.post("/api/vrx/channel")
     async def set_channel(band: str, channel: int):
@@ -58,17 +64,18 @@ def create_app(vrx, elrs, video_streamer):
         await ws.accept()
         try:
             while True:
-                status = {
-                    "rssi_a": vrx.status.rssi_a,
-                    "rssi_b": vrx.status.rssi_b,
-                    "lq": elrs.stats.link_quality,
-                    "snr": elrs.stats.snr,
-                    "band": vrx.status.band,
+                msg = {
+                    "rssi_a":  vrx.status.rssi_a,
+                    "rssi_b":  vrx.status.rssi_b,
+                    "lq":      elrs.stats.link_quality,
+                    "snr":     elrs.stats.snr,
+                    "band":    vrx.status.band,
                     "channel": vrx.status.channel,
-                    "freq": vrx.status.frequency_mhz,
+                    "freq":    vrx.status.frequency_mhz,
+                    "telem":   telem.get_dict() if telem else {},
                 }
-                await ws.send_text(json.dumps(status))
-                await asyncio.sleep(0.5)
+                await ws.send_text(json.dumps(msg))
+                await asyncio.sleep(0.2)
         except WebSocketDisconnect:
             pass
 
@@ -76,8 +83,9 @@ def create_app(vrx, elrs, video_streamer):
     return app
 
 
-async def run(vrx, elrs, video_streamer, host: str = "0.0.0.0", port: int = 8080):
-    create_app(vrx, elrs, video_streamer)
+async def run(vrx, elrs, video_streamer, telem=None,
+              host: str = "0.0.0.0", port: int = 8080):
+    create_app(vrx, elrs, video_streamer, telem)
     config = uvicorn.Config(app, host=host, port=port, log_level="warning")
     server = uvicorn.Server(config)
     log.info(f"Web UI: http://{host}:{port}")
