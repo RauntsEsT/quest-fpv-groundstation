@@ -57,11 +57,83 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#3fb950;color:#fff;padding:8px 18px;border-radius:20px;font-size:0.85rem;font-weight:600;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
 @media(min-width:600px){.g2{grid-template-columns:1fr 1fr 1fr}}
+/* FLY PAGE */
+#page-fly{padding:0;background:#0d1117;height:calc(100vh - 60px);display:none;flex-direction:column;user-select:none;-webkit-user-select:none}
+#page-fly.active{display:flex}
+.fly-hud{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#161b22;border-bottom:1px solid #30363d;gap:8px;flex-shrink:0}
+.hud-item{display:flex;flex-direction:column;align-items:center;gap:1px}
+.hud-label{font-size:0.6rem;color:#8b949e;text-transform:uppercase}
+.hud-val{font-size:0.9rem;font-weight:700;color:#58a6ff}
+.hud-val.good{color:#3fb950}.hud-val.warn{color:#d29922}.hud-val.bad{color:#f85149}
+.btn-arm{padding:8px 20px;border-radius:6px;border:none;font-size:0.85rem;font-weight:700;cursor:pointer;touch-action:manipulation}
+.btn-arm.disarmed{background:#3fb95033;color:#3fb950;border:1px solid #3fb950}
+.btn-arm.armed{background:#f8514933;color:#f85149;border:1px solid #f85149}
+#fly-canvas{position:relative;flex:1;overflow:hidden;background:#0d1117}
+.fly-widget{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none;-webkit-user-select:none;touch-action:none}
+#fly-canvas.editing .fly-widget{outline:2px dashed #58a6ff55;border-radius:14px;padding:6px 8px;background:#58a6ff09;cursor:grab}
+.edit-handle{font-size:1rem;color:#58a6ff66;display:none;line-height:1;pointer-events:none;letter-spacing:1px}
+#fly-canvas.editing .edit-handle{display:block}
+#edit-save-bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;display:none;gap:8px;background:#161b22f0;padding:8px 14px;border-radius:20px;border:1px solid #30363d}
+.btn-edit-layout{padding:5px 10px;background:none;border:1px solid #30363d;border-radius:6px;color:#8b949e;font-size:0.75rem;cursor:pointer;touch-action:manipulation;line-height:1.4;white-space:nowrap}
+.btn-edit-layout.active{border-color:#58a6ff;color:#58a6ff;background:#1f6feb22}
+.stick-zone{position:relative;width:160px;height:160px;background:#161b22;border:1px solid #30363d;border-radius:50%;flex-shrink:0;touch-action:none}
+.stick-knob{position:absolute;width:56px;height:56px;background:#58a6ff;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);transition:background .2s;pointer-events:none}
+.stick-knob.active{background:#1f6feb}
+.stick-cross{position:absolute;inset:0;pointer-events:none}
+.stick-cross::before,.stick-cross::after{content:'';position:absolute;background:#30363d}
+.stick-cross::before{width:1px;height:100%;left:50%;top:0}
+.stick-cross::after{width:100%;height:1px;top:50%;left:0}
+.fly-widget .fly-aux{margin:0}
+.fly-aux{width:52px;height:52px;border-radius:50%;border:1px solid #30363d;background:#21262d;color:#8b949e;font-size:0.7rem;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
+.fly-aux.on{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
+.stick-label{text-align:center;font-size:0.62rem;color:#8b949e;margin-top:6px}
 </style>
 </head>
 <body>
 
 <div id="toast" class="toast">Salvestatud</div>
+
+<!-- FLY -->
+<div id="page-fly" class="page">
+  <div class="fly-hud">
+    <div class="hud-item"><span class="hud-label">LQ</span><span class="hud-val" id="f-lq">—</span></div>
+    <div class="hud-item"><span class="hud-label">Kõrgus</span><span class="hud-val" id="f-alt">—</span></div>
+    <div class="hud-item">
+      <button class="btn-arm disarmed" id="arm-btn" ontouchstart="toggleArm(event)" onclick="toggleArm(event)">DISARMED</button>
+    </div>
+    <div class="hud-item"><span class="hud-label">Aku</span><span class="hud-val" id="f-bat">—</span></div>
+    <div class="hud-item"><span class="hud-label">Mode</span><span class="hud-val" id="f-mode">—</span></div>
+    <button class="btn-edit-layout" id="edit-layout-btn" ontouchstart="toggleEditMode(event)" onclick="toggleEditMode(event)">⚙ Muuda</button>
+  </div>
+  <div id="fly-canvas">
+    <div class="fly-widget" id="widget-stick-l">
+      <div class="edit-handle">⠿⠿⠿</div>
+      <div class="stick-zone" id="stick-l">
+        <div class="stick-cross"></div>
+        <div class="stick-knob" id="knob-l"></div>
+      </div>
+      <div class="stick-label">THR / YAW</div>
+    </div>
+    <div class="fly-widget" id="widget-aux">
+      <div class="edit-handle">⠿⠿⠿</div>
+      <button class="fly-aux" id="aux-ch6" ontouchstart="auxPress('ch6',event)" ontouchend="auxRelease('ch6',event)" onclick="auxClick('ch6')">MODE</button>
+      <button class="fly-aux" id="aux-ch7" ontouchstart="auxPress('ch7',event)" ontouchend="auxRelease('ch7',event)" onclick="auxClick('ch7')">AUX3</button>
+      <button class="fly-aux" id="aux-ch8" ontouchstart="auxPress('ch8',event)" ontouchend="auxRelease('ch8',event)" onclick="auxClick('ch8')">AUX4</button>
+    </div>
+    <div class="fly-widget" id="widget-stick-r">
+      <div class="edit-handle">⠿⠿⠿</div>
+      <div class="stick-zone" id="stick-r">
+        <div class="stick-cross"></div>
+        <div class="stick-knob" id="knob-r"></div>
+      </div>
+      <div class="stick-label">PITCH / ROLL</div>
+    </div>
+    <div id="edit-save-bar">
+      <button class="btn sec" style="padding:7px 16px;font-size:0.82rem" onclick="setEditMode(false)">Tühista</button>
+      <button class="btn" style="padding:7px 16px;font-size:0.82rem" onclick="saveLayout()">Salvesta</button>
+    </div>
+  </div>
+</div>
 
 <!-- DASHBOARD -->
 <div id="page-dash" class="page active">
@@ -200,8 +272,11 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 
 <!-- BOTTOM NAV -->
 <nav class="nav">
+  <button class="nav-btn" onclick="showPage('fly',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Lend
+  </button>
   <button class="nav-btn active" onclick="showPage('dash',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Info
   </button>
   <button class="nav-btn" onclick="showPage('vrx',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12a10 10 0 0 1 20 0"/><path d="M6 12a6 6 0 0 1 12 0"/></svg>VRX
@@ -468,7 +543,309 @@ function buildTelemLive(t){
 buildChannelGrid(document.getElementById('ch-selector-58'),BANDS_58,'58');
 buildChannelGrid(document.getElementById('ch-selector-12'),BANDS_12,'12');
 loadCfg();
+
+// ── JOYSTICK ──────────────────────────────────────────────
+const STICK_R = 80; // zone radius px
+const KNOB_R  = 28; // knob radius px
+const MAX_R   = STICK_R - KNOB_R;
+
+let axes = {lx:0, ly:0, rx:0, ry:0};
+let buttons = {ch5:false, ch6:false, ch7:false, ch8:false};
+let ctrlWs = null, ctrlInterval = null;
+let armed = false;
+let editMode = false;
+
+function stickCenter(el) {
+  const r = el.getBoundingClientRect();
+  return {x: r.left + r.width/2, y: r.top + r.height/2};
+}
+
+function setupStick(zoneId, knobId, axX, axY, springY) {
+  const zone = document.getElementById(zoneId);
+  const knob = document.getElementById(knobId);
+  let tid = null;
+
+  function move(cx, cy) {
+    const c = stickCenter(zone);
+    let dx = cx - c.x, dy = cy - c.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > MAX_R) { dx = dx/dist*MAX_R; dy = dy/dist*MAX_R; }
+    knob.style.left = (STICK_R + dx) + 'px';
+    knob.style.top  = (STICK_R + dy) + 'px';
+    knob.style.transform = 'none';
+    knob.classList.add('active');
+    axes[axX] = parseFloat((dx / MAX_R).toFixed(3));
+    axes[axY] = parseFloat((-dy / MAX_R).toFixed(3)); // invert Y
+  }
+
+  function release() {
+    knob.classList.remove('active');
+    // Spring back — throttle (ly) stays if springY=false
+    axes[axX] = 0;
+    if (springY) axes[axY] = 0;
+    knob.style.left = '50%';
+    knob.style.top  = '50%';
+    knob.style.transform = 'translate(-50%,-50%)';
+    tid = null;
+  }
+
+  zone.addEventListener('touchstart', e => {
+    if (editMode) return;
+    e.preventDefault();
+    tid = e.changedTouches[0].identifier;
+    move(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+  }, {passive:false});
+
+  zone.addEventListener('touchmove', e => {
+    if (editMode) return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === tid) { move(t.clientX, t.clientY); break; }
+    }
+  }, {passive:false});
+
+  zone.addEventListener('touchend', e => {
+    if (editMode) return;
+    for (const t of e.changedTouches) { if (t.identifier === tid) { release(); break; } }
+  });
+
+  // Mouse fallback (desktop testing)
+  let dragging = false;
+  zone.addEventListener('mousedown', e => { if (editMode) return; dragging=true; move(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', e => { if(dragging) move(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', () => { if(dragging){ dragging=false; release(); } });
+}
+
+// Left: throttle=ly (no spring), yaw=lx (spring)
+setupStick('stick-l','knob-l','lx','ly', false);
+// Right: pitch=ry (spring), roll=rx (spring)
+setupStick('stick-r','knob-r','rx','ry', true);
+
+// ARM toggle
+function toggleArm(e) {
+  e.preventDefault();
+  if (editMode) return;
+  armed = !armed;
+  buttons.ch5 = armed;
+  const btn = document.getElementById('arm-btn');
+  btn.textContent = armed ? 'ARMED' : 'DISARMED';
+  btn.className = 'btn-arm ' + (armed ? 'armed' : 'disarmed');
+}
+
+// AUX buttons
+const auxState = {ch6:false, ch7:false, ch8:false};
+function auxPress(ch, e) { if (editMode) return; e.preventDefault(); auxState[ch]=true; document.getElementById('aux-'+ch).classList.add('on'); }
+function auxRelease(ch, e) { if (editMode) return; e.preventDefault(); auxState[ch]=false; document.getElementById('aux-'+ch).classList.remove('on'); }
+function auxClick(ch) { if (editMode) return; auxState[ch]=!auxState[ch]; document.getElementById('aux-'+ch).classList.toggle('on', auxState[ch]); }
+
+// Control WebSocket
+function connectCtrlWS() {
+  ctrlWs = new WebSocket('ws://'+location.host+'/ws/control');
+  ctrlWs.onopen = () => {
+    if (ctrlInterval) clearInterval(ctrlInterval);
+    ctrlInterval = setInterval(sendControl, 40); // 25 Hz
+  };
+  ctrlWs.onclose = () => {
+    if (ctrlInterval) clearInterval(ctrlInterval);
+    setTimeout(connectCtrlWS, 1000);
+  };
+}
+
+function sendControl() {
+  if (!ctrlWs || ctrlWs.readyState !== 1) return;
+  const msg = {
+    axes: [axes.lx, axes.ly, axes.rx, axes.ry],
+    buttons: {
+      ch5: armed,
+      ch6: auxState.ch6,
+      ch7: auxState.ch7,
+      ch8: auxState.ch8
+    }
+  };
+  ctrlWs.send(JSON.stringify(msg));
+}
+
+// Update fly HUD from ws/status data
+function updateFlyHud(d) {
+  const t = d.telem || {};
+  const lqEl = document.getElementById('f-lq');
+  lqEl.textContent = d.lq != null ? d.lq+'%' : '—';
+  lqEl.className = 'hud-val ' + lqClass(d.lq||0);
+  document.getElementById('f-alt').textContent = t.altitude_rel_m != null ? t.altitude_rel_m+'m' : '—';
+  const batEl = document.getElementById('f-bat');
+  batEl.textContent = t.battery_pct != null ? t.battery_pct+'%' : '—';
+  batEl.className = 'hud-val ' + lqClass(t.battery_pct||0);
+  document.getElementById('f-mode').textContent = t.flight_mode || '—';
+}
+
+// Patch ws.onmessage to also update fly HUD
+const _origConnectWS = connectWS;
+connectWS = function() {
+  const ws = new WebSocket('ws://'+location.host+'/ws/status');
+  const dot = document.getElementById('dot');
+  ws.onopen=()=>dot.className='dot on';
+  ws.onclose=()=>{dot.className='dot off';setTimeout(connectWS,2000);};
+  ws.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    updateFlyHud(d);
+    document.getElementById('d-freq').textContent=d.freq?(d.freq+' MHz ('+d.band+d.channel+')'):'—';
+    document.getElementById('d-rssi-a').textContent=d.rssi_a!==undefined?d.rssi_a+' dBm':'—';
+    document.getElementById('d-rssi-b').textContent=d.rssi_b!==undefined?d.rssi_b+' dBm':'—';
+    document.getElementById('d-bar-a').style.width=Math.max(0,100+d.rssi_a)+'%';
+    document.getElementById('d-bar-b').style.width=Math.max(0,100+d.rssi_b)+'%';
+    const lqEl=document.getElementById('d-lq');
+    lqEl.textContent=d.lq+'%'; lqEl.className='val '+lqClass(d.lq);
+    document.getElementById('d-bar-lq').style.width=d.lq+'%';
+    document.getElementById('d-snr').textContent=d.snr+' dB';
+    document.getElementById('d-txpwr').textContent=d.txpwr?(d.txpwr+' mW'):'—';
+    const t=d.telem||{};
+    const armEl=document.getElementById('d-arm');
+    if(t.armed!==undefined){armEl.textContent=t.armed?'ARMED':'DISARMED';armEl.className='tag '+(t.armed?'armed':'disarmed');}
+    document.getElementById('d-mode').textContent=t.flight_mode||'—';
+    document.getElementById('d-alt').textContent=t.altitude_rel_m!=null?t.altitude_rel_m+'m':'—';
+    document.getElementById('d-spd').textContent=t.speed_ms!=null?t.speed_ms+'m/s':'—';
+    document.getElementById('d-vspd').textContent=t.vertical_speed_ms!=null?t.vertical_speed_ms+'m/s':'—';
+    document.getElementById('d-gps').textContent=t.gps_fix!=null?(['—','—','2D','3D'][t.gps_fix]||t.gps_fix):'—';
+    document.getElementById('d-dist').textContent=t.home_distance_m!=null?t.home_distance_m+'m':'—';
+    const voltEl=document.getElementById('d-volt');
+    voltEl.textContent=t.voltage_v?t.voltage_v+'V':'—'; voltEl.className='val '+vClass(t.voltage_v||0);
+    document.getElementById('d-curr').textContent=t.current_a!=null?t.current_a+'A':'—';
+    const batEl=document.getElementById('d-bat');
+    if(t.battery_pct!=null){batEl.textContent=t.battery_pct+'%';batEl.className='val '+lqClass(t.battery_pct);}
+    buildTelemLive(t);
+  };
+};
+
+connectCtrlWS();
 connectWS();
+
+// ── LAYOUT EDITOR ──────────────────────────────────────────
+const WIDGET_IDS = ['widget-stick-l', 'widget-stick-r', 'widget-aux'];
+const DEFAULT_LAYOUT_PCT = {
+  'widget-stick-l': {xp: 3,  yp: 56},
+  'widget-stick-r': {xp: 57, yp: 56},
+  'widget-aux':     {xp: 43, yp: 12},
+};
+let flyLayout = {};
+
+function loadFlyLayout() {
+  try {
+    const s = localStorage.getItem('fly_layout');
+    flyLayout = s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_LAYOUT_PCT));
+  } catch(e) {
+    flyLayout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_PCT));
+  }
+  // Apply after layout is rendered
+  requestAnimationFrame(applyFlyLayout);
+}
+
+function applyFlyLayout() {
+  WIDGET_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    const pos = flyLayout[id];
+    if (!el || !pos) return;
+    el.style.left = pos.xp + '%';
+    el.style.top  = pos.yp + '%';
+  });
+}
+
+function saveLayout() {
+  const canvas = document.getElementById('fly-canvas');
+  const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+  WIDGET_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    flyLayout[id] = {
+      xp: parseFloat((el.offsetLeft / cw * 100).toFixed(2)),
+      yp: parseFloat((el.offsetTop  / ch * 100).toFixed(2)),
+    };
+  });
+  localStorage.setItem('fly_layout', JSON.stringify(flyLayout));
+  setEditMode(false);
+  toast('Paigutus salvestatud');
+}
+
+function toggleEditMode(e) {
+  e.preventDefault();
+  setEditMode(!editMode);
+}
+
+function setEditMode(val) {
+  editMode = val;
+  document.getElementById('fly-canvas').classList.toggle('editing', val);
+  document.getElementById('edit-save-bar').style.display = val ? 'flex' : 'none';
+  const btn = document.getElementById('edit-layout-btn');
+  if (btn) btn.classList.toggle('active', val);
+  // Reset stick knobs when entering edit mode
+  if (val) {
+    axes = {lx:0, ly:0, rx:0, ry:0};
+    ['knob-l','knob-r'].forEach(id => {
+      const k = document.getElementById(id);
+      k.style.left = '50%'; k.style.top = '50%';
+      k.style.transform = 'translate(-50%,-50%)';
+      k.classList.remove('active');
+    });
+  }
+}
+
+function setupWidgetDrag(widgetId) {
+  const el = document.getElementById(widgetId);
+  const canvas = document.getElementById('fly-canvas');
+  let sx, sy, sl, st, tid = null;
+
+  function onStart(cx, cy) {
+    sx = cx; sy = cy;
+    sl = el.offsetLeft; st = el.offsetTop;
+    el.style.transition = 'none';
+    el.style.zIndex = '10';
+  }
+
+  function onMove(cx, cy) {
+    if (sx === undefined) return;
+    const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+    let nl = sl + (cx - sx), nt = st + (cy - sy);
+    nl = Math.max(0, Math.min(cw - el.offsetWidth, nl));
+    nt = Math.max(0, Math.min(ch - el.offsetHeight, nt));
+    el.style.left = nl + 'px';
+    el.style.top  = nt + 'px';
+  }
+
+  function onEnd() {
+    el.style.zIndex = '';
+    sx = undefined;
+  }
+
+  el.addEventListener('touchstart', e => {
+    if (!editMode) return;
+    e.stopPropagation();
+    e.preventDefault();
+    tid = e.changedTouches[0].identifier;
+    onStart(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+  }, {passive: false});
+
+  el.addEventListener('touchmove', e => {
+    if (!editMode) return;
+    e.stopPropagation();
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === tid) { onMove(t.clientX, t.clientY); break; }
+    }
+  }, {passive: false});
+
+  el.addEventListener('touchend', e => {
+    if (!editMode) return;
+    e.stopPropagation();
+    onEnd(); tid = null;
+  });
+
+  let _drag = false;
+  el.addEventListener('mousedown', e => { if (!editMode) return; e.preventDefault(); _drag = true; onStart(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', e => { if (_drag && editMode) onMove(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', () => { if (_drag) { _drag = false; onEnd(); } });
+}
+
+WIDGET_IDS.forEach(setupWidgetDrag);
+loadFlyLayout();
 </script>
 </body>
 </html>
