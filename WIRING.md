@@ -2,27 +2,29 @@
 
 ---
 
-## Foxeer Wildfire — 8-Pin Connector Pinout
+## Foxeer Wildfire — 9-Pin Connector Pinout
 
 ```
-Foxeer Wildfire 8-pin kaabel (pin 1 = esimene, modulist väljuv pool)
+Foxeer Wildfire 9-pin kaabel (pin 1 = esimene, modulist väljuv pool)
 
-  ┌───┬───┬───┬───┬───┬───┬───┬───┐
-  │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ 8 │
-  └───┴───┴───┴───┴───┴───┴───┴───┘
-    5V  RSSI GND  AUD  VID  DAT  CS  CLK
+  ┌───┬────┬───┬─────┬─────┬─────┬──────┬──────┬──────┐
+  │ 1 │  2 │ 3 │  4  │  5  │  6  │  7   │  8   │  9   │
+  └───┴────┴───┴─────┴─────┴─────┴──────┴──────┴──────┘
+   5V  RSSI GND  AudL  AudR  VID  Chan3  Chan2  Chan1
+                                  (CS)   (CLK)  (DATA)
 ```
 
-| Pin | Nimetus   | Suund      | Ühendus                        | Märkus                          |
-|-----|-----------|------------|--------------------------------|---------------------------------|
-| 1   | 5V        | ← sisend   | RPi5 Pin 2 (5V)                | ~350mA, parem väline 5V allikas |
-| 2   | RSSI      | → väljund  | ADS1115 A0                     | Analoog 0–3.3V, signaalitugevus |
-| 3   | GND       | —          | RPi5 Pin 6 (GND)               | Ühine maandus!                  |
-| 4   | Audio Out | → väljund  | EasyCap valge RCA (valikuline) | Mono audio                      |
-| 5   | Video Out | → väljund  | EasyCap kollane RCA            | Composite video ~1Vpp           |
-| 6   | Data      | ← sisend   | RPi5 Pin 19 (GPIO10)           | SPI MOSI / RTC6715 DATA         |
-| 7   | CS        | ← sisend   | RPi5 Pin 24 (GPIO8)            | SPI Chip Select (active LOW)    |
-| 8   | CLK       | ← sisend   | RPi5 Pin 23 (GPIO11)           | SPI kell                        |
+| Pin | Nimetus        | Suund      | Ühendus                        | Märkus                          |
+|-----|----------------|------------|--------------------------------|---------------------------------|
+| 1   | 5V             | ← sisend   | RPi5 Pin 2 (5V)                | ~350mA, parem väline 5V allikas |
+| 2   | RSSI / NC      | → väljund  | ADS1115 A0                     | Analoog 0–3.3V, signaalitugevus |
+| 3   | GND            | —          | RPi5 Pin 6 (GND)               | Ühine maandus!                  |
+| 4   | Audio L        | → väljund  | EasyCap valge RCA (valikuline) | Audio vasakkanal                |
+| 5   | Audio R        | → väljund  | EasyCap punane RCA (valikuline)| Audio paremkanal                |
+| 6   | Video Out      | → väljund  | EasyCap kollane RCA            | Composite video ~1Vpp           |
+| 7   | Chan3 / **CS** | ← sisend   | RPi5 Pin 24 (GPIO8)            | SPI Chip Select (active LOW)    |
+| 8   | Chan2 / **CLK**| ← sisend   | RPi5 Pin 23 (GPIO11)           | SPI kell                        |
+| 9   | Chan1 / **DATA**| ← sisend  | RPi5 Pin 19 (GPIO10)           | SPI MOSI / RTC6715 DATA         |
 
 ---
 
@@ -41,7 +43,7 @@ Foxeer Wildfire 8-pin                  EasyCap                 RPi5
 │                    │                └──────────────┘
 │ Pin 2 (RSSI)  ─────┼───────────────────────────────────► ADS1115 A0
 │                    │
-│ Pin 6 (Data)  ◄────┼── RPi Pin 19 (GPIO10)  ┐
+│ Pin 9 (Data)  ◄────┼── RPi Pin 19 (GPIO10)  ┐
 │ Pin 7 (CS)    ◄────┼── RPi Pin 24 (GPIO8)   ├─ SPI kanalivalik
 │ Pin 8 (CLK)   ◄────┼── RPi Pin 23 (GPIO11)  ┘   (RTC6715)
 └────────────────────┘
@@ -53,8 +55,9 @@ Foxeer Wildfire 8-pin                  EasyCap                 RPi5
 |-----------------|-------|--------------|----|--------------|---------|----------------------------------|
 | Foxeer Wildfire | 1     | 5V           | ←  | Pin 2 või 4  | 5V      | ~350mA, kaalumisel väline toide |
 | Foxeer Wildfire | 3     | GND          | ←  | Pin 6        | GND     | Ühine maandus kõigile           |
-| Foxeer Wildfire | 5     | Video Out    | →  | EasyCap RCA  | —       | Composite video (kollane RCA)   |
-| Foxeer Wildfire | 4     | Audio Out    | →  | EasyCap RCA  | —       | Audio (valge RCA, valikuline)   |
+| Foxeer Wildfire | 6     | Video Out    | →  | EasyCap RCA  | —       | Composite video (kollane RCA)   |
+| Foxeer Wildfire | 4     | Audio L      | →  | EasyCap RCA  | —       | Audio L (valge RCA, valikuline) |
+| Foxeer Wildfire | 5     | Audio R      | →  | EasyCap RCA  | —       | Audio R (punane RCA, valikuline)|
 | EasyCap         | —     | USB-A        | →  | RPi USB 3.0  | —       | Ilmub `/dev/video0`             |
 | Foxeer Wildfire | 2     | RSSI         | →  | ADS1115 A0   | —       | 0–3.3V analoogsignaal           |
 | ADS1115         | —     | SDA          | ↔  | Pin 3        | GPIO2   | I2C andmed                      |
@@ -62,9 +65,9 @@ Foxeer Wildfire 8-pin                  EasyCap                 RPi5
 | ADS1115         | —     | VDD          | ←  | Pin 1        | 3V3     | 3.3V toide                      |
 | ADS1115         | —     | GND          | ←  | Pin 6        | GND     |                                 |
 | ADS1115         | —     | ADDR         | ←  | GND          | —       | I2C aadress 0x48                |
-| Foxeer Wildfire | 6     | Data (MOSI)  | ←  | Pin 19       | GPIO10  | RTC6715 chip select             |
-| Foxeer Wildfire | 7     | CS           | ←  | Pin 24       | GPIO8   | SPI MOSI                        |
-| Foxeer Wildfire | 8     | CLK          | ←  | Pin 23       | GPIO11  | SPI kell                        |
+| Foxeer Wildfire | 9     | Chan1 (DATA) | ←  | Pin 19       | GPIO10  | SPI MOSI / RTC6715 DATA         |
+| Foxeer Wildfire | 7     | Chan3 (CS)   | ←  | Pin 24       | GPIO8   | SPI Chip Select (active LOW)    |
+| Foxeer Wildfire | 8     | Chan2 (CLK)  | ←  | Pin 23       | GPIO11  | SPI kell                        |
 
 ### EasyCap — praktilised nõuanded
 
@@ -164,13 +167,13 @@ Analog VRX video out → RCA/BNC → USB Capture Card → USB-A → RPi5
 
 ### 3A. Foxeer Wildfire / Analog VRX — RTC6715 SPI (automatic channel control)
 
-| RPi5 Pin | GPIO   | Direction | VRX Pin              | Foxeer Wildfire Pin | Notes                     |
-|----------|--------|-----------|----------------------|---------------------|---------------------------|
-| Pin 23   | GPIO11 | RPi → VRX | CLK                  | **Pin 8 (CLK)**     | SPI clock, bit-bang       |
-| Pin 19   | GPIO10 | RPi → VRX | DATA                 | **Pin 6 (Data)**    | SPI MOSI                  |
-| Pin 24   | GPIO8  | RPi → VRX | CS                   | **Pin 7 (CS)**      | Chip select (active LOW)  |
-| Pin 6    | GND    | —         | GND                  | **Pin 3 (GND)**     |                           |
-| Pin 2    | 5V     | —         | VCC (5V)             | **Pin 1 (5V)**      | ~350mA, kaalumisel väline |
+| RPi5 Pin | GPIO   | Direction | VRX Pin              | Foxeer Wildfire Pin      | Notes                     |
+|----------|--------|-----------|----------------------|--------------------------|---------------------------|
+| Pin 23   | GPIO11 | RPi → VRX | CLK                  | **Pin 8 (Chan2 / CLK)**  | SPI clock, bit-bang       |
+| Pin 19   | GPIO10 | RPi → VRX | DATA                 | **Pin 9 (Chan1 / DATA)** | SPI MOSI                  |
+| Pin 24   | GPIO8  | RPi → VRX | CS                   | **Pin 7 (Chan3 / CS)**   | Chip select (active LOW)  |
+| Pin 6    | GND    | —         | GND                  | **Pin 3 (GND)**          |                           |
+| Pin 2    | 5V     | —         | VCC (5V)             | **Pin 1 (5V)**           | ~350mA, kaalumisel väline |
 
 **Software:** `vrx.driver = "rtc6715"` in `config.json`
 
