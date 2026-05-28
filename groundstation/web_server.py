@@ -107,6 +107,25 @@ def create_app(vrx, elrs, video_streamer, telem=None, ctrl=None):
         except WebSocketDisconnect:
             log.info("Web controller disconnected")
 
+    @app.get("/video")
+    async def video_feed():
+        from fastapi.responses import StreamingResponse
+        BOUNDARY = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+
+        async def generate():
+            q = video_streamer.subscribe()
+            try:
+                while True:
+                    try:
+                        frame = await asyncio.wait_for(q.get(), timeout=5.0)
+                        yield BOUNDARY + frame + b"\r\n"
+                    except asyncio.TimeoutError:
+                        break
+            finally:
+                video_streamer.unsubscribe(q)
+
+        return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
+
     app.mount("/static", StaticFiles(directory="static"), name="static")
     return app
 

@@ -3,20 +3,60 @@ import logging
 
 log = logging.getLogger("video_streamer")
 
+SOI = bytes([0xFF, 0xD8])
+EOI = bytes([0xFF, 0xD9])
+
 
 class VideoStreamer:
     """
-    Captures analog FPV video from Foxeer Wildfire via CVBS USB converter,
-    encodes with ffmpeg, and streams via UDP to Meta Quest 3.
-    Quest connects to: udp://<groundstation-ip>:5006
+    Captures analog FPV video via CVBS USB capture card.
+    Runs one ffmpeg MJPEG process and distributes frames to all HTTP /video clients.
     """
 
-    def __init__(self, device: str = "/dev/video0", port: int = 5006,
-                 fps: int = 25):
+    def __init__(self, device: str = "/dev/video0", port: int = 5006, fps: int = 25):
         self.device = device
-        self.port = port
+        self.port = port  # kept for API compat
         self.fps = fps
         self._proc: asyncio.subprocess.Process | None = None
+        self._latest_frame: bytes = b""
+        self._subs: list[asyncio.Queue] = []
+
+    def subscribe(self) -> asyncio.Queue:
+        q: asyncio.Queue = asyncio.Queue(maxsize=3)
+        self._subs.append(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue):
+        try:
+            self._subs.remove(q)
+        except ValueError:
+            pass
+
+    async def _read_frames(self):
+        buf = b""
+        while True:
+            chunk = await self._proc.stdout.read(32768)
+            if not chunk:
+                log.warning("ffmpeg stdout closed")
+                break
+            buf += chunk
+            while True:
+                s = buf.find(SOI)
+                if s == -1:
+                    buf = b""
+                    break
+                e = buf.find(EOI, s + 2)
+                if e == -1:
+                    buf = buf[s:]
+                    break
+                frame = buf[s:e + 2]
+                buf = buf[e + 2:]
+                self._latest_frame = frame
+                for q in self._subs[:]:
+                    try:
+                        q.put_nowait(frame)
+                    except asyncio.QueueFull:
+                        pass
 
     async def start(self):
         cmd = [
@@ -26,23 +66,17 @@ class VideoStreamer:
             "-standard", "PAL",
             "-framerate", str(self.fps),
             "-i", self.device,
-            "-vf", "format=yuv420p",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-tune", "zerolatency",
-            "-b:v", "2M",
-            "-f", "mpegts",
-            f"udp://0.0.0.0:{self.port}?pkt_size=1316",
+            "-vf", "scale=640:-2,format=yuvj420p",
+            "-f", "mjpeg", "-q:v", "5",
+            "pipe:1",
         ]
-        log.info(f"Video stream: {self.device} → UDP:{self.port}")
+        log.info(f"Video: {self.device} → MJPEG HTTP /video ({self.fps}fps)")
         self._proc = await asyncio.create_subprocess_exec(
             *cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
         )
-        _, stderr = await self._proc.communicate()
-        if self._proc.returncode != 0:
-            log.error(f"ffmpeg error: {stderr.decode()[-500:]}")
+        await self._read_frames()
 
     async def stop(self):
         if self._proc:
