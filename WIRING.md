@@ -1,5 +1,87 @@
 # Quest FPV Ground Station — RPi5 Wiring Diagram
 
+---
+
+## Analog VRX + EasyCap + RPi5 — Täielik skeem
+
+### Signaalide ahel
+
+```
+┌─────────────────────┐     RCA composite     ┌──────────────┐     USB 3.0
+│   Analoog 5.8G VRX  │ ──── (kollane RCA) ──►│   EasyCap    │────────────► RPi5
+│                     │                        │  USB capture │             /dev/video0
+│  VIDEO OUT ─────────┼────────────────────────┤  card        │
+│  GND       ─────────┼──────────────────────  └──────────────┘
+│                     │
+│  5V IN     ◄────────┼──── RPi5 Pin 2 (5V)
+│  GND       ◄────────┼──── RPi5 Pin 6 (GND)   ← ühine maandus!
+│                     │
+│  RSSI OUT  ─────────┼──── ADS1115 A0 pin      ← valikuline, RSSI mõõtmiseks
+│                     │
+│  CS  pad   ◄────────┼──── RPi5 Pin 24 (GPIO8)   ┐
+│  DATA pad  ◄────────┼──── RPi5 Pin 19 (GPIO10)  ├─ SPI kanalivalik
+│  CLK  pad  ◄────────┼──── RPi5 Pin 23 (GPIO11)  ┘   (RTC6715 juhtimiseks)
+└─────────────────────┘
+```
+
+### Detailne ühendustabel
+
+| Komponent       | Viik / juhe          | →  | RPi5 Pin     | GPIO    | Märkus                          |
+|-----------------|----------------------|----|--------------|---------|---------------------------------|
+| VRX             | 5V toide             | ←  | Pin 2 või 4  | 5V      | Max ~500mA RPi USB-lt           |
+| VRX             | GND                  | ←  | Pin 6        | GND     | Ühine maandus kõigile           |
+| VRX             | VIDEO OUT (RCA/juhe) | →  | EasyCap RCA  | —       | Composite video                 |
+| EasyCap         | USB-A                | →  | RPi USB 3.0  | —       | Ilmub `/dev/video0`             |
+| VRX (valikuline)| RSSI OUT             | →  | ADS1115 A0   | —       | 0–3.3V analoogsignaal           |
+| ADS1115         | SDA                  | ↔  | Pin 3        | GPIO2   | I2C andmed                      |
+| ADS1115         | SCL                  | ↔  | Pin 5        | GPIO3   | I2C kell                        |
+| ADS1115         | VDD                  | ←  | Pin 1        | 3V3     | 3.3V toide                      |
+| ADS1115         | GND                  | ←  | Pin 6        | GND     |                                 |
+| ADS1115         | ADDR                 | ←  | GND          | —       | I2C aadress 0x48                |
+| VRX (SPI)       | CS pad               | ←  | Pin 24       | GPIO8   | RTC6715 chip select             |
+| VRX (SPI)       | DATA pad             | ←  | Pin 19       | GPIO10  | SPI MOSI                        |
+| VRX (SPI)       | CLK pad              | ←  | Pin 23       | GPIO11  | SPI kell                        |
+
+### EasyCap — praktilised nõuanded
+
+```
+EasyCap sisend:
+  ┌─────────────────────────────────────────────┐
+  │  [YELLOW RCA]  ◄── VRX Video Out            │  ← ainult see on vajalik!
+  │  [WHITE  RCA]  ◄── Audio L  (ei kasutata)   │
+  │  [RED    RCA]  ◄── Audio R  (ei kasutata)   │
+  │  [USB-A]       ──► RPi5 USB port            │
+  └─────────────────────────────────────────────┘
+
+Linux draiver: uvcvideo (automaatne, ei vaja seadistust)
+Kontrolli: v4l2-ctl --list-devices
+           → EasyCap (usb-...): /dev/video0
+
+ffmpeg test:
+  ffplay -f v4l2 -i /dev/video0
+
+Kui EasyCap näitab mustvalget pilti:
+  → VRX ja capture card peavad kasutama sama videostandardi (PAL/NTSC)
+  → Proovi: ffmpeg -f v4l2 -standard PAL -i /dev/video0 ...
+```
+
+### VRX toide — hoiatused
+
+```
+⚠  RPi5 Pin 2/4 (5V) on otse ühendatud USB toitega.
+   Maksimaalne vool: ~600mA kõigi seadmete peale kokku.
+
+   Kui VRX tarbib rohkem kui ~200mA → kasuta välise 5V toiteallikat!
+   Välise toite puhul ühenda ainult GND RPi külge (ühine maandus).
+
+Tüüpilised VRX voolud:
+   Eachine ROTG02 / RC832:  ~200mA  → RPi 5V PIN sobib
+   Foxeer wildfire:         ~350mA  → piiripealne, parem väline toide
+   Diversiteedi VRX:        ~450mA  → kasuta välist toidet
+```
+
+---
+
 ## RPi5 40-Pin GPIO Header
 
 ```
