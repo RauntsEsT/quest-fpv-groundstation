@@ -12,11 +12,9 @@ class VideoStreamer:
     """
 
     def __init__(self, device: str = "/dev/video0", port: int = 5006,
-                 width: int = 720, height: int = 576, fps: int = 30):
+                 fps: int = 25):
         self.device = device
         self.port = port
-        self.width = width
-        self.height = height
         self.fps = fps
         self._proc: asyncio.subprocess.Process | None = None
 
@@ -24,8 +22,8 @@ class VideoStreamer:
         cmd = [
             "ffmpeg", "-y",
             "-f", "v4l2",
-            "-input_format", "mjpeg",
-            "-video_size", f"{self.width}x{self.height}",
+            "-input_format", "yuyv422",
+            "-standard", "PAL",
             "-framerate", str(self.fps),
             "-i", self.device,
             "-vf", "format=yuv420p",
