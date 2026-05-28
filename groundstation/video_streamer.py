@@ -61,13 +61,19 @@ class VideoStreamer:
     async def start(self):
         cmd = [
             "ffmpeg", "-y",
+            "-fflags", "nobuffer",
+            "-flags", "low_delay",
+            "-probesize", "32",
+            "-analyzeduration", "0",
             "-f", "v4l2",
             "-input_format", "yuyv422",
             "-standard", "PAL",
             "-framerate", str(self.fps),
+            "-thread_queue_size", "2",
             "-i", self.device,
             "-vf", "scale=640:-2,format=yuvj420p",
-            "-f", "mjpeg", "-q:v", "5",
+            "-f", "mjpeg", "-q:v", "7",
+            "-flush_packets", "1",
             "pipe:1",
         ]
         log.info(f"Video: {self.device} → MJPEG HTTP /video ({self.fps}fps)")
