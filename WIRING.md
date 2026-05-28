@@ -2,45 +2,69 @@
 
 ---
 
-## Analog VRX + EasyCap + RPi5 — Täielik skeem
+## Foxeer Wildfire — 8-Pin Connector Pinout
+
+```
+Foxeer Wildfire 8-pin kaabel (pin 1 = esimene, modulist väljuv pool)
+
+  ┌───┬───┬───┬───┬───┬───┬───┬───┐
+  │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ 8 │
+  └───┴───┴───┴───┴───┴───┴───┴───┘
+    5V  RSSI GND  AUD  VID  DAT  CS  CLK
+```
+
+| Pin | Nimetus   | Suund      | Ühendus                        | Märkus                          |
+|-----|-----------|------------|--------------------------------|---------------------------------|
+| 1   | 5V        | ← sisend   | RPi5 Pin 2 (5V)                | ~350mA, parem väline 5V allikas |
+| 2   | RSSI      | → väljund  | ADS1115 A0                     | Analoog 0–3.3V, signaalitugevus |
+| 3   | GND       | —          | RPi5 Pin 6 (GND)               | Ühine maandus!                  |
+| 4   | Audio Out | → väljund  | EasyCap valge RCA (valikuline) | Mono audio                      |
+| 5   | Video Out | → väljund  | EasyCap kollane RCA            | Composite video ~1Vpp           |
+| 6   | Data      | ← sisend   | RPi5 Pin 19 (GPIO10)           | SPI MOSI / RTC6715 DATA         |
+| 7   | CS        | ← sisend   | RPi5 Pin 24 (GPIO8)            | SPI Chip Select (active LOW)    |
+| 8   | CLK       | ← sisend   | RPi5 Pin 23 (GPIO11)           | SPI kell                        |
+
+---
+
+## Foxeer Wildfire + EasyCap + RPi5 — Täielik skeem
 
 ### Signaalide ahel
 
 ```
-┌─────────────────────┐     RCA composite     ┌──────────────┐     USB 3.0
-│   Analoog 5.8G VRX  │ ──── (kollane RCA) ──►│   EasyCap    │────────────► RPi5
-│                     │                        │  USB capture │             /dev/video0
-│  VIDEO OUT ─────────┼────────────────────────┤  card        │
-│  GND       ─────────┼──────────────────────  └──────────────┘
-│                     │
-│  5V IN     ◄────────┼──── RPi5 Pin 2 (5V)
-│  GND       ◄────────┼──── RPi5 Pin 6 (GND)   ← ühine maandus!
-│                     │
-│  RSSI OUT  ─────────┼──── ADS1115 A0 pin      ← valikuline, RSSI mõõtmiseks
-│                     │
-│  CS  pad   ◄────────┼──── RPi5 Pin 24 (GPIO8)   ┐
-│  DATA pad  ◄────────┼──── RPi5 Pin 19 (GPIO10)  ├─ SPI kanalivalik
-│  CLK  pad  ◄────────┼──── RPi5 Pin 23 (GPIO11)  ┘   (RTC6715 juhtimiseks)
-└─────────────────────┘
+Foxeer Wildfire 8-pin                  EasyCap                 RPi5
+┌────────────────────┐                ┌──────────────┐
+│ Pin 1 (5V)  ◄──────┼── RPi Pin 2 ──┤              │
+│ Pin 3 (GND) ◄──────┼── RPi Pin 6   │              │
+│                    │                │              │
+│ Pin 5 (Video) ─────┼───────────────►│ Yellow RCA   │──USB──► /dev/video0
+│ Pin 4 (Audio) ─────┼───────────────►│ White  RCA   │         (valikuline)
+│                    │                └──────────────┘
+│ Pin 2 (RSSI)  ─────┼───────────────────────────────────► ADS1115 A0
+│                    │
+│ Pin 6 (Data)  ◄────┼── RPi Pin 19 (GPIO10)  ┐
+│ Pin 7 (CS)    ◄────┼── RPi Pin 24 (GPIO8)   ├─ SPI kanalivalik
+│ Pin 8 (CLK)   ◄────┼── RPi Pin 23 (GPIO11)  ┘   (RTC6715)
+└────────────────────┘
 ```
 
 ### Detailne ühendustabel
 
-| Komponent       | Viik / juhe          | →  | RPi5 Pin     | GPIO    | Märkus                          |
-|-----------------|----------------------|----|--------------|---------|---------------------------------|
-| VRX             | 5V toide             | ←  | Pin 2 või 4  | 5V      | Max ~500mA RPi USB-lt           |
-| VRX             | GND                  | ←  | Pin 6        | GND     | Ühine maandus kõigile           |
-| VRX             | VIDEO OUT (RCA/juhe) | →  | EasyCap RCA  | —       | Composite video                 |
-| EasyCap         | USB-A                | →  | RPi USB 3.0  | —       | Ilmub `/dev/video0`             |
-| VRX (valikuline)| RSSI OUT             | →  | ADS1115 A0   | —       | 0–3.3V analoogsignaal           |
-| ADS1115         | SDA                  | ↔  | Pin 3        | GPIO2   | I2C andmed                      |
-| ADS1115         | SCL                  | ↔  | Pin 5        | GPIO3   | I2C kell                        |
-| ADS1115         | VDD                  | ←  | Pin 1        | 3V3     | 3.3V toide                      |
-| ADS1115         | GND                  | ←  | Pin 6        | GND     |                                 |
-| ADS1115         | ADDR                 | ←  | GND          | —       | I2C aadress 0x48                |
-| VRX (SPI)       | CS pad               | ←  | Pin 24       | GPIO8   | RTC6715 chip select             |
-| VRX (SPI)       | DATA pad             | ←  | Pin 19       | GPIO10  | SPI MOSI                        |
-| VRX (SPI)       | CLK pad              | ←  | Pin 23       | GPIO11  | SPI kell                        |
+| Komponent       | Pin # | Viik/nimi    | →  | RPi5 Pin     | GPIO    | Märkus                          |
+|-----------------|-------|--------------|----|--------------|---------|----------------------------------|
+| Foxeer Wildfire | 1     | 5V           | ←  | Pin 2 või 4  | 5V      | ~350mA, kaalumisel väline toide |
+| Foxeer Wildfire | 3     | GND          | ←  | Pin 6        | GND     | Ühine maandus kõigile           |
+| Foxeer Wildfire | 5     | Video Out    | →  | EasyCap RCA  | —       | Composite video (kollane RCA)   |
+| Foxeer Wildfire | 4     | Audio Out    | →  | EasyCap RCA  | —       | Audio (valge RCA, valikuline)   |
+| EasyCap         | —     | USB-A        | →  | RPi USB 3.0  | —       | Ilmub `/dev/video0`             |
+| Foxeer Wildfire | 2     | RSSI         | →  | ADS1115 A0   | —       | 0–3.3V analoogsignaal           |
+| ADS1115         | —     | SDA          | ↔  | Pin 3        | GPIO2   | I2C andmed                      |
+| ADS1115         | —     | SCL          | ↔  | Pin 5        | GPIO3   | I2C kell                        |
+| ADS1115         | —     | VDD          | ←  | Pin 1        | 3V3     | 3.3V toide                      |
+| ADS1115         | —     | GND          | ←  | Pin 6        | GND     |                                 |
+| ADS1115         | —     | ADDR         | ←  | GND          | —       | I2C aadress 0x48                |
+| Foxeer Wildfire | 6     | Data (MOSI)  | ←  | Pin 19       | GPIO10  | RTC6715 chip select             |
+| Foxeer Wildfire | 7     | CS           | ←  | Pin 24       | GPIO8   | SPI MOSI                        |
+| Foxeer Wildfire | 8     | CLK          | ←  | Pin 23       | GPIO11  | SPI kell                        |
 
 ### EasyCap — praktilised nõuanded
 
@@ -138,15 +162,15 @@ Analog VRX video out → RCA/BNC → USB Capture Card → USB-A → RPi5
 
 ---
 
-### 3A. Analog VRX — RTC6715 SPI (recommended, automatic channel control)
+### 3A. Foxeer Wildfire / Analog VRX — RTC6715 SPI (automatic channel control)
 
-| RPi5 Pin | GPIO   | Direction | VRX Pin | Notes                     |
-|----------|--------|-----------|---------|---------------------------|
-| Pin 23   | GPIO11 | RPi → VRX | CLK     | SPI clock, bit-bang       |
-| Pin 19   | GPIO10 | RPi → VRX | DATA    | SPI MOSI                  |
-| Pin 24   | GPIO8  | RPi → VRX | CS      | Chip select (active LOW)  |
-| Pin 6    | GND    | —         | GND     |                           |
-| Pin 17   | 3V3    | —         | VCC     | Check VRX voltage first!  |
+| RPi5 Pin | GPIO   | Direction | VRX Pin              | Foxeer Wildfire Pin | Notes                     |
+|----------|--------|-----------|----------------------|---------------------|---------------------------|
+| Pin 23   | GPIO11 | RPi → VRX | CLK                  | **Pin 8 (CLK)**     | SPI clock, bit-bang       |
+| Pin 19   | GPIO10 | RPi → VRX | DATA                 | **Pin 6 (Data)**    | SPI MOSI                  |
+| Pin 24   | GPIO8  | RPi → VRX | CS                   | **Pin 7 (CS)**      | Chip select (active LOW)  |
+| Pin 6    | GND    | —         | GND                  | **Pin 3 (GND)**     |                           |
+| Pin 2    | 5V     | —         | VCC (5V)             | **Pin 1 (5V)**      | ~350mA, kaalumisel väline |
 
 **Software:** `vrx.driver = "rtc6715"` in `config.json`
 
@@ -196,16 +220,17 @@ RPi GPIO ──[1kΩ]──► NPN Base (BC547)
 
 ---
 
-### 3D. Foxeer Wildfire VRX — UART control (5.8 GHz + 1.2 GHz)
+### 3D. Foxeer Wildfire — RSSI (ADS1115 via I2C)
 
-| RPi5 Pin | GPIO  | Direction  | Foxeer Pin | Notes          |
-|----------|-------|------------|------------|----------------|
-| Pin 7    | GPIO4 | RPi → VRX  | RX         | UART3 TX       |
-| Pin 29   | GPIO5 | VRX → RPi  | TX         | UART3 RX       |
-| Pin 6    | GND   | —          | GND        |                |
+Foxeer Wildfire **Pin 2 (RSSI)** annab analoogsignaali signaalitugevuse kohta.  
+Kuna RPi5-l pole analoog-sisendeid, kasutame ADS1115 ADC-d.
 
-**Software:** `vrx.driver = "foxeer_uart"`, port `/dev/ttyAMA3` @ 115200 baud  
-**config.txt:** `dtoverlay=uart3`
+| Foxeer Pin | Nimetus | → | ADS1115 | Märkus                    |
+|------------|---------|---|---------|---------------------------|
+| Pin 2      | RSSI    | → | A0      | 0–3.3V analoogsignaal     |
+| Pin 3      | GND     | — | GND     | Ühine maandus             |
+
+> ADS1115 ühendus RPi-ga on kirjeldatud sektsioonis **3B** (I2C, GPIO2/3).
 
 ---
 
