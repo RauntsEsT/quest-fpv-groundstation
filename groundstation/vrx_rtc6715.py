@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import config_manager
 from vrx_base import VRXBase
 from vrx_bands import BANDS_5800, BANDS_1200
 
@@ -20,10 +21,10 @@ def _build_freq_table():
                 _FREQ_TABLE[f] = _freq_to_rtc6715(f)
 
 def _freq_to_rtc6715(freq_mhz: int) -> int:
-    f_ref = 8
-    n = freq_mhz / f_ref
-    a = int(n)
-    b = round((n - a) * 64)
+    # Betaflight formula: n = (freq_kHz - 479000) * 64 / 16000
+    n = (freq_mhz * 1000 - 479000) * 64 // 16000
+    a = n // 64   # 9-bit integer part
+    b = n % 64    # 6-bit fractional part
     return (a & 0x1FF) | ((b & 0x3F) << 9)
 
 
@@ -52,13 +53,15 @@ class RTC6715VRX(VRXBase):
             return
         lg = self._lgpio
         h  = self._h
-        word = ((data & 0xFFFFFF) << 1) | (reg & 0x0F)
+        # RTC6715: 25-bit word sent LSB first
+        # bits[3:0]=reg addr, bit[4]=1(write), bits[24:5]=20-bit data
+        word = (reg & 0x0F) | (1 << 4) | ((data & 0xFFFFF) << 5)
         lg.gpio_write(h, PIN_CS, 0)
-        for i in range(25):
-            bit = (word >> (24 - i)) & 1
-            lg.gpio_write(h, PIN_MOSI, bit)
-            lg.gpio_write(h, PIN_CLK,  1)
-            lg.gpio_write(h, PIN_CLK,  0)
+        for _ in range(25):
+            lg.gpio_write(h, PIN_MOSI, word & 1)
+            lg.gpio_write(h, PIN_CLK, 1)
+            lg.gpio_write(h, PIN_CLK, 0)
+            word >>= 1
         lg.gpio_write(h, PIN_CS, 1)
 
     def set_channel(self, band: str, channel: int):
@@ -73,6 +76,11 @@ class RTC6715VRX(VRXBase):
         reg_val = _FREQ_TABLE.get(freq, _freq_to_rtc6715(freq))
         self._spi_write(REG_SYNTH_A, reg_val)
         log.info(f"RTC6715: {band}{channel} = {freq} MHz")
+        # Persist selected channel so it survives restart
+        cfg = config_manager.load()
+        cfg["vrx"]["band"] = band
+        cfg["vrx"]["channel"] = channel
+        config_manager.save(cfg)
 
     async def _read_rssi(self):
         try:

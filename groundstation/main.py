@@ -25,6 +25,14 @@ WEB_PORT      = int(os.getenv("WEB_PORT",      "8080"))
 async def main():
     cfg   = config_manager.load()
     vrx   = create_vrx(cfg["vrx"]["driver"])
+    saved_band = cfg["vrx"].get("band")
+    saved_ch   = cfg["vrx"].get("channel")
+    if saved_band and saved_ch:
+        try:
+            vrx.set_channel(saved_band, int(saved_ch))
+            log.info(f"VRX restored: {saved_band}{saved_ch}")
+        except Exception as e:
+            log.warning(f"VRX channel restore failed: {e}")
     elrs  = ELRSManager(ELRS_PORT, ELRS_BAUD)
     video = VideoStreamer(VIDEO_DEVICE, VIDEO_PORT)
     ctrl  = ControllerReceiver(UDP_CTRL_PORT, elrs, cfg)
