@@ -140,9 +140,16 @@ class TxParam:
 
 class CrossfireTX:
     """
-    TBS Crossfire TX module manager.
-    Provides the same send_channels() interface as ELRSManager for drop-in
-    compatibility with ControllerReceiver and web_server.
+    TBS Crossfire TX module manager — half-duplex single-wire CRSF.
+
+    CRSF is half-duplex: TX and RX share one physical wire.
+    Every byte we send echoes back on the RX line immediately.
+    The _echo_pending buffer tracks outgoing bytes so they can be
+    stripped from incoming data before parsing module responses.
+
+    Wiring: RPi5 GPIO14 (TX) ──┬── Crossfire CRSF pad
+                  GPIO15 (RX) ──┘
+    (connect both GPIO14 and GPIO15 to the same Crossfire wire)
     """
 
     def __init__(self, port: str = "/dev/ttyAMA0", baud: int = 400000):
@@ -153,20 +160,23 @@ class CrossfireTX:
         self.params: dict[int, TxParam]   = {}
         self._serial: Optional[serial.Serial] = None
         self._channels: tuple = (0.0,) * 16
-        self._buf = bytearray()
-        self._telem_feed = None  # set by TelemetryManager to forward frames
+        self._buf          = bytearray()
+        self._echo_pending = bytearray()   # bytes we sent, awaiting echo discard
+        self._telem_feed   = None          # set by TelemetryManager to forward frames
 
     # ── Serial helpers ─────────────────────────────────────────────────────
 
     def _open(self):
         if not self._serial or not self._serial.is_open:
             self._serial = serial.Serial(self.port, self.baud, timeout=0)
-            log.info(f"Crossfire UART open: {self.port} @ {self.baud}")
+            log.info(f"Crossfire UART open: {self.port} @ {self.baud} (half-duplex)")
 
     def _write(self, frame: bytes):
         try:
             self._open()
             self._serial.write(frame)
+            # Queue the sent bytes — they will echo back on RX and must be discarded
+            self._echo_pending.extend(frame)
         except serial.SerialException as e:
             log.error(f"UART write error: {e}")
             self._serial = None
@@ -237,6 +247,20 @@ class CrossfireTX:
     def _drain_rx(self):
         try:
             raw = self._serial.read(256)
+            if not raw:
+                return
+            # Strip self-echo: bytes we sent come back first in order
+            if self._echo_pending:
+                n = min(len(raw), len(self._echo_pending))
+                # Match greedily from front; discard up to n matched echo bytes
+                matched = 0
+                for i in range(n):
+                    if raw[i] == self._echo_pending[i]:
+                        matched += 1
+                    else:
+                        break
+                raw = raw[matched:]
+                self._echo_pending = self._echo_pending[matched:]
             if raw:
                 self._buf.extend(raw)
         except (serial.SerialException, AttributeError):
