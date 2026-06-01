@@ -5,6 +5,7 @@ log = logging.getLogger("vrx_manager")
 
 VRX_DRIVERS = {
     "rtc6715":     ("vrx_rtc6715",  "RTC6715VRX"),
+    "akk331":      ("vrx_akk331",   "AKK331VRX"),
     "button":      ("vrx_button",   "ButtonVRX"),
     "foxeer_uart": ("vrx_uart",     "FoxeerWildfireUART"),
     "walksnail":   ("vrx_digital",  "WalksnailVRX"),

@@ -85,7 +85,14 @@ class ELRSManager:
             self._serial = None
 
     async def start(self):
-        """Send failsafe channels at 50Hz when no Quest input is active."""
+        """Continuously send channel packets at 50Hz (keepalive + failsafe)."""
         log.info("ELRS manager started")
+        self._open()
         while True:
+            try:
+                self._serial.write(build_rc_packet(self._channels))
+            except Exception as e:
+                log.warning(f"UART write error: {e}")
+                self._serial = None
+                self._open()
             await asyncio.sleep(0.02)  # 50 Hz

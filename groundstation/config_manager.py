@@ -8,9 +8,14 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 DEFAULT = {
     "vrx": {
-        "driver": "dummy",
-        "port":   "/dev/ttyAMA3",
-        "baud":   115200
+        "driver":  "foxeer_uart",
+        "options": {"port": "/dev/ttyAMA2"},
+        "band":    "F",
+        "channel": 2
+    },
+    "tx": {
+        "port": "/dev/ttyAMA0",
+        "baud": 400000
     },
     "telemetry": {
         "drivers": ["dummy"],

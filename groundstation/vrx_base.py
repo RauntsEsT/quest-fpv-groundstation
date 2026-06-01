@@ -34,9 +34,7 @@ class VRXBase(ABC):
         for bands in (BANDS_5800, BANDS_1200):
             for band, freqs in bands.items():
                 if freq_mhz in freqs:
-                    self.status.band = band
-                    self.status.channel = freqs.index(freq_mhz) + 1
-                    self.status.frequency_mhz = freq_mhz
+                    self.set_channel(band, freqs.index(freq_mhz) + 1)
                     return
         raise ValueError(f"Frequency {freq_mhz} MHz not in any known band")
 
