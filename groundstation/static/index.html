@@ -2,7 +2,12 @@
 <html lang="et">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="/static/manifest.json">
 <title>Quest FPV Ground Station</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -75,6 +80,8 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 .btn-arm{padding:8px 20px;border-radius:6px;border:none;font-size:0.85rem;font-weight:700;cursor:pointer;touch-action:manipulation}
 .btn-arm.disarmed{background:#3fb95033;color:#3fb950;border:1px solid #3fb950}
 .btn-arm.armed{background:#f8514933;color:#f85149;border:1px solid #f85149}
+.btn-fs{background:none;border:1px solid #30363d;border-radius:6px;color:#8b949e;padding:6px 10px;font-size:0.8rem;cursor:pointer;touch-action:manipulation}
+.btn-fs:active{color:#58a6ff;border-color:#58a6ff}
 #fly-canvas{position:relative;flex:1;overflow:hidden;background:#000}
 #fpv-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;z-index:0}
 .fly-widget{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none;-webkit-user-select:none;touch-action:none;z-index:1}
@@ -111,6 +118,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
     </div>
     <div class="hud-item"><span class="hud-label">Aku</span><span class="hud-val" id="f-bat">—</span></div>
     <div class="hud-item"><span class="hud-label">Mode</span><span class="hud-val" id="f-mode">—</span></div>
+    <button class="btn-fs" onclick="toggleFullscreen()" id="fs-btn" title="Täisekraan">⛶</button>
     <button class="btn-edit-layout" id="edit-layout-btn" ontouchstart="toggleEditMode(event)" onclick="toggleEditMode(event)">⚙ Muuda</button>
   </div>
   <div id="fly-canvas">
@@ -1015,6 +1023,25 @@ function setupWidgetDrag(widgetId) {
 
 WIDGET_IDS.forEach(setupWidgetDrag);
 loadFlyLayout();
+
+// ── Täisekraan ───────────────────────────────────────────────────────────
+function toggleFullscreen() {
+  const btn = document.getElementById('fs-btn');
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().then(() => {
+      if (btn) btn.textContent = '✕';
+      screen.orientation && screen.orientation.lock('landscape').catch(()=>{});
+    }).catch(()=>{});
+  } else {
+    document.exitFullscreen().then(() => {
+      if (btn) btn.textContent = '⛶';
+    }).catch(()=>{});
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fs-btn');
+  if (btn) btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+});
 
 // ── TX moodul ────────────────────────────────────────────────────────────
 
