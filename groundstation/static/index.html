@@ -157,9 +157,11 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
     <div class="bar-wrap"><div class="bar" id="d-bar-b" style="width:0"></div></div>
   </div>
   <div class="card">
-    <h2>ELRS Link</h2>
+    <h2>TX Link</h2>
     <div class="row"><span>LQ</span><span class="val" id="d-lq">—</span></div>
     <div class="bar-wrap"><div class="bar" id="d-bar-lq" style="width:0"></div></div>
+    <div class="row"><span>RSSI 1</span><span class="val" id="d-rssi1">—</span></div>
+    <div class="row"><span>RSSI 2</span><span class="val" id="d-rssi2">—</span></div>
     <div class="row"><span>SNR</span><span class="val" id="d-snr">—</span></div>
     <div class="row"><span>TX Power</span><span class="val" id="d-txpwr">—</span></div>
   </div>
@@ -283,6 +285,96 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 </div>
 </div>
 
+<!-- TX MOODUL -->
+<div id="page-tx" class="page">
+<h1>TX Moodul</h1>
+
+<div class="g2">
+  <!-- RC Sisend -->
+  <div class="card">
+    <h2>RC Sisend</h2>
+    <div class="row"><span>Olek</span><span class="val good" id="tx-rc-input">—</span></div>
+    <div class="row"><span>Režiim</span><span class="val" id="tx-mode">PPM</span></div>
+    <div class="row"><span>GPIO</span><span class="val" id="tx-gpio">18 (pin 12)</span></div>
+    <div class="row"><span>Seade</span><span class="val" id="tx-device">XF microTX</span></div>
+  </div>
+
+  <!-- RF Link -->
+  <div class="card">
+    <h2>RF Link</h2>
+    <div class="row"><span>LQ</span><span class="val" id="tx-lq">—</span></div>
+    <div class="bar-wrap"><div class="bar" id="tx-lq-bar" style="width:0"></div></div>
+    <div class="row"><span>RSSI Ant1</span><span class="val" id="tx-rssi1">—</span></div>
+    <div class="row"><span>RSSI Ant2</span><span class="val" id="tx-rssi2">—</span></div>
+    <div class="row"><span>SNR</span><span class="val" id="tx-snr">—</span></div>
+    <div class="row"><span>Võimsus</span><span class="val" id="tx-pwr">—</span></div>
+  </div>
+</div>
+
+<!-- Kanalid -->
+<div class="card">
+  <h2>PPM Kanalid</h2>
+  <div id="tx-ch-grid"></div>
+</div>
+
+<!-- Seaded -->
+<div class="card">
+  <h2>TX Seaded</h2>
+  <div class="g2">
+    <div class="form-row">
+      <label>Võimsus (max)</label>
+      <select id="tx-pwr-sel" onchange="txSetParam('power',this.value)">
+        <option value="0">10 mW</option>
+        <option value="1">25 mW</option>
+        <option value="2">100 mW</option>
+        <option value="3" selected>250 mW</option>
+        <option value="4">500 mW</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Link Rate</label>
+      <select id="tx-rate-sel" onchange="txSetParam('rate',this.value)">
+        <option value="0">50 Hz (pika-vahemaa)</option>
+        <option value="1" selected>150 Hz (madal latentsus)</option>
+        <option value="2">Dynamic</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Dynamic Power</label>
+      <select id="tx-dynpwr-sel" onchange="txSetParam('dynpwr',this.value)">
+        <option value="1" selected>On</option>
+        <option value="0">Off</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Telemetria</label>
+      <select id="tx-telem-sel" onchange="txSetParam('telem',this.value)">
+        <option value="1" selected>On</option>
+        <option value="0">Off</option>
+      </select>
+    </div>
+  </div>
+  <div style="font-size:0.72rem;color:#8b949e;margin-top:8px">Seaded rakenduvad CRSF ühenduse kaudu (tulevikus automaatne)</div>
+</div>
+
+<!-- Toimingud -->
+<div class="card">
+  <h2>Toimingud</h2>
+  <div class="btn-row">
+    <button class="btn" onclick="txBind()">🔗 Bind drooniga</button>
+    <button class="btn sec" onclick="txScan()">↻ Loe seaded</button>
+    <button class="btn sec" onclick="txPing()">⚡ Ping</button>
+  </div>
+  <div id="tx-action-msg" style="font-size:0.8rem;color:#3fb950;margin-top:8px;display:none"></div>
+</div>
+
+<!-- TX parameetrid (CRSF) -->
+<div class="card" id="tx-params-card" style="display:none">
+  <h2>CRSF Parameetrid</h2>
+  <div id="tx-params-list"></div>
+</div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="nav">
   <button class="nav-btn" onclick="showPage('fly',this)">
@@ -290,6 +382,9 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
   </button>
   <button class="nav-btn active" onclick="showPage('dash',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Info
+  </button>
+  <button class="nav-btn" onclick="showPage('tx',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>TX
   </button>
   <button class="nav-btn" onclick="showPage('vrx',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12a10 10 0 0 1 20 0"/><path d="M6 12a6 6 0 0 1 12 0"/></svg>VRX
@@ -920,6 +1015,147 @@ function setupWidgetDrag(widgetId) {
 
 WIDGET_IDS.forEach(setupWidgetDrag);
 loadFlyLayout();
+
+// ── TX moodul ────────────────────────────────────────────────────────────
+const CH_NAMES = ['CH1 Roll','CH2 Pitch','CH3 Throttle','CH4 Yaw','CH5 AUX1','CH6 AUX2','CH7 AUX3','CH8 AUX4'];
+
+function initTxPage() {
+  const grid = document.getElementById('tx-ch-grid');
+  if (!grid || grid.children.length) return;
+  CH_NAMES.forEach((name, i) => {
+    grid.innerHTML += `
+      <div class="ch-live-row">
+        <span class="ch-live-lbl">CH${i+1}</span>
+        <span class="ch-live-name">${name}</span>
+        <div class="ch-bar-wrap">
+          <div class="ch-bar-center"></div>
+          <div class="ch-bar-val" id="tx-ch-bar-${i}" style="left:50%;width:0"></div>
+        </div>
+        <span class="val" id="tx-ch-val-${i}" style="min-width:45px;text-align:right;font-size:0.78rem">—</span>
+      </div>`;
+  });
+}
+
+function updateTxChannels(channels) {
+  if (!channels) return;
+  channels.slice(0, 8).forEach((v, i) => {
+    const us = Math.round(1500 + v * 500);
+    const pct = ((v + 1) / 2 * 100).toFixed(0);
+    const bar = document.getElementById('tx-ch-bar-'+i);
+    const val = document.getElementById('tx-ch-val-'+i);
+    if (!bar) return;
+    if (v >= 0) {
+      bar.style.left = '50%';
+      bar.style.width = (v * 50) + '%';
+      bar.style.background = '#3fb950';
+    } else {
+      bar.style.left = (50 + v * 50) + '%';
+      bar.style.width = (-v * 50) + '%';
+      bar.style.background = '#58a6ff';
+    }
+    if (val) val.textContent = us + 'μs';
+  });
+}
+
+function updateTxStatus(d) {
+  const lq = d.lq || 0;
+  const lqEl = document.getElementById('tx-lq');
+  const lqBar = document.getElementById('tx-lq-bar');
+  if (lqEl) {
+    lqEl.textContent = lq + '%';
+    lqEl.className = 'val ' + (lq > 70 ? 'good' : lq > 30 ? 'warn' : 'bad');
+  }
+  if (lqBar) lqBar.style.width = Math.min(lq, 100) + '%';
+
+  const r1 = document.getElementById('tx-rssi1');
+  const r2 = document.getElementById('tx-rssi2');
+  if (r1) r1.textContent = d.rssi1 ? (d.rssi1 + ' dBm') : '—';
+  if (r2) r2.textContent = d.rssi2 ? (d.rssi2 + ' dBm') : '—';
+
+  const snr = document.getElementById('tx-snr');
+  if (snr) snr.textContent = d.snr !== undefined ? (d.snr + ' dB') : '—';
+
+  const pwr = document.getElementById('tx-pwr');
+  if (pwr) pwr.textContent = d.txpwr ? (d.txpwr + ' mW') : '—';
+
+  // Dash lehel uued väljad
+  const dr1 = document.getElementById('d-rssi1');
+  const dr2 = document.getElementById('d-rssi2');
+  if (dr1) dr1.textContent = d.rssi1 ? (d.rssi1 + ' dBm') : '—';
+  if (dr2) dr2.textContent = d.rssi2 ? (d.rssi2 + ' dBm') : '—';
+}
+
+async function txBind() {
+  const msg = document.getElementById('tx-action-msg');
+  try {
+    const r = await fetch('/api/tx/bind', {method:'POST'});
+    const j = await r.json();
+    if (msg) { msg.style.display='block'; msg.textContent='✓ Bind käsk saadetud — pane droon bind moodi!'; setTimeout(()=>msg.style.display='none', 4000); }
+  } catch(e) { if (msg) { msg.style.display='block'; msg.style.color='#f85149'; msg.textContent='Viga: '+e.message; } }
+}
+
+async function txScan() {
+  const msg = document.getElementById('tx-action-msg');
+  if (msg) { msg.style.display='block'; msg.style.color='#3fb950'; msg.textContent='Loen TX parameetreid...'; }
+  try {
+    await fetch('/api/tx/scan', {method:'POST'});
+    await new Promise(r => setTimeout(r, 5000));
+    const r = await fetch('/api/tx/params');
+    const params = await r.json();
+    renderTxParams(params);
+    if (msg) { msg.textContent = params.length ? `✓ ${params.length} parameetrit loetud` : 'Parameetreid ei saadud (CRSF pole ühendatud)'; setTimeout(()=>msg.style.display='none', 3000); }
+  } catch(e) { if (msg) { msg.style.color='#f85149'; msg.textContent='Viga: '+e.message; } }
+}
+
+async function txPing() {
+  await fetch('/api/tx/ping', {method:'POST'});
+  const msg = document.getElementById('tx-action-msg');
+  if (msg) { msg.style.display='block'; msg.style.color='#3fb950'; msg.textContent='Ping saadetud'; setTimeout(()=>msg.style.display='none', 2000); }
+}
+
+function renderTxParams(params) {
+  const card = document.getElementById('tx-params-card');
+  const list = document.getElementById('tx-params-list');
+  if (!params.length) { if (card) card.style.display='none'; return; }
+  if (card) card.style.display='block';
+  if (!list) return;
+  list.innerHTML = params.map(p => {
+    if (p.options && p.options.length) {
+      const opts = p.options.map((o,i) => `<option value="${i}"${p.value==i?' selected':''}>${o}</option>`).join('');
+      return `<div class="form-row"><label>${p.name}</label><select onchange="fetch('/api/tx/params/${p.index}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:+this.value})})">${opts}</select></div>`;
+    }
+    return `<div class="row"><span>${p.name}</span><span class="val">${p.value ?? '—'}</span></div>`;
+  }).join('');
+}
+
+function txSetParam(type, value) {
+  // Placeholder — works when CRSF params are loaded via txScan
+  console.log('TX set', type, value);
+}
+
+// TX lehe initsialiseerimine
+document.addEventListener('DOMContentLoaded', () => {
+  initTxPage();
+  // Laadi TX staatus
+  fetch('/api/tx/status').then(r=>r.json()).then(d => {
+    const modeEl = document.getElementById('tx-mode');
+    if (modeEl && d.mode) modeEl.textContent = d.mode.toUpperCase();
+    const rcEl = document.getElementById('tx-rc-input');
+    if (rcEl) rcEl.textContent = d.device ? 'CRSF OK' : (d.mode === 'ppm' ? 'PPM 8ch ✓' : 'Otsib...');
+  }).catch(()=>{});
+});
+
+// WS handler — lisa TX uuendused
+const _origOnMsg = typeof ws !== 'undefined' ? ws.onmessage : null;
+if (typeof ws !== 'undefined') {
+  ws.addEventListener('message', e => {
+    try {
+      const d = JSON.parse(e.data);
+      updateTxStatus(d);
+      updateTxChannels(d.channels);
+    } catch(_) {}
+  });
+}
 </script>
 </body>
 </html>
