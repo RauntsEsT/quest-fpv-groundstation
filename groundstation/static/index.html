@@ -245,7 +245,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 </div>
 <div class="card">
   <h2>UART seadistus</h2>
-  <div class="form-row"><label>UART port (FC telemetry)</label><input type="text" id="telem-port" value="/dev/ttyAMA4"></div>
+  <div class="form-row"><label>UART port (FC telemetry)</label><input type="text" id="telem-port" value="/dev/ttyAMA4" oninput="localStorage.setItem('fpv_telem_port',this.value)"></div>
   <div id="telem-bauds"></div>
   <button class="btn" onclick="saveTelemCfg()">Salvesta ja rakenda</button>
 </div>
@@ -331,7 +331,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
   <div class="g2">
     <div class="form-row">
       <label>Võimsus (max)</label>
-      <select id="tx-pwr-sel" onchange="txSetParam('power',this.value)">
+      <select id="tx-pwr-sel" onchange="txSetParam('power',this.value);localStorage.setItem('fpv_tx_power',this.value)">
         <option value="0">10 mW</option>
         <option value="1">25 mW</option>
         <option value="2">100 mW</option>
@@ -341,7 +341,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
     </div>
     <div class="form-row">
       <label>Link Rate</label>
-      <select id="tx-rate-sel" onchange="txSetParam('rate',this.value)">
+      <select id="tx-rate-sel" onchange="txSetParam('rate',this.value);localStorage.setItem('fpv_tx_rate',this.value)">
         <option value="0">50 Hz (pika-vahemaa)</option>
         <option value="1" selected>150 Hz (madal latentsus)</option>
         <option value="2">Dynamic</option>
@@ -349,14 +349,14 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
     </div>
     <div class="form-row">
       <label>Dynamic Power</label>
-      <select id="tx-dynpwr-sel" onchange="txSetParam('dynpwr',this.value)">
+      <select id="tx-dynpwr-sel" onchange="txSetParam('dynpwr',this.value);localStorage.setItem('fpv_tx_dynpwr',this.value)">
         <option value="1" selected>On</option>
         <option value="0">Off</option>
       </select>
     </div>
     <div class="form-row">
       <label>Telemetria</label>
-      <select id="tx-telem-sel" onchange="txSetParam('telem',this.value)">
+      <select id="tx-telem-sel" onchange="txSetParam('telem',this.value);localStorage.setItem('fpv_tx_telem',this.value)">
         <option value="1" selected>On</option>
         <option value="0">Off</option>
       </select>
@@ -421,6 +421,7 @@ function showPage(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   btn.classList.add('active');
+  localStorage.setItem('fpv_tab', id);
   flyTabActive = (id === 'fly');
   if (!flyTabActive) {
     // Lahkumisel peata saatmine ja nulli stikid
@@ -1159,9 +1160,38 @@ function txSetParam(type, value) {
   console.log('TX set', type, value);
 }
 
+// ── localStorage taastamine ───────────────────────────────────────────────
+function restoreState() {
+  // Taasta viimane tab
+  const lastTab = localStorage.getItem('fpv_tab');
+  if (lastTab) {
+    const btn = document.querySelector(`.nav-btn[onclick*="'${lastTab}'"]`);
+    if (btn) showPage(lastTab, btn);
+  }
+
+  // Taasta TX seaded
+  const txMap = {
+    'fpv_tx_power':  'tx-pwr-sel',
+    'fpv_tx_rate':   'tx-rate-sel',
+    'fpv_tx_dynpwr': 'tx-dynpwr-sel',
+    'fpv_tx_telem':  'tx-telem-sel',
+  };
+  Object.entries(txMap).forEach(([key, elId]) => {
+    const val = localStorage.getItem(key);
+    const el = document.getElementById(elId);
+    if (val !== null && el) el.value = val;
+  });
+
+  // Taasta telemeetria port
+  const telemPort = localStorage.getItem('fpv_telem_port');
+  const telemPortEl = document.getElementById('telem-port');
+  if (telemPort && telemPortEl) telemPortEl.value = telemPort;
+}
+
 // TX lehe initsialiseerimine
 document.addEventListener('DOMContentLoaded', () => {
   initTxPage();
+  restoreState();
   // Laadi TX staatus
   fetch('/api/tx/status').then(r=>r.json()).then(d => {
     const modeEl = document.getElementById('tx-mode');
