@@ -84,7 +84,21 @@ class PPMTransmitter:
 
     @staticmethod
     def _busy_wait(us: int):
+        """Pure busy-wait — only for short final segments (< 500μs)."""
         end = time.perf_counter() + us * 1e-6
+        while time.perf_counter() < end:
+            pass
+
+    @staticmethod
+    def _hybrid_wait(us: int):
+        """
+        Sleep for most of the duration, busy-wait only the last 400μs.
+        Releases GIL during sleep → asyncio event loop can run.
+        """
+        BUSY_TAIL_US = 400
+        if us > BUSY_TAIL_US:
+            time.sleep((us - BUSY_TAIL_US) * 1e-6)
+        end = time.perf_counter() + BUSY_TAIL_US * 1e-6
         while time.perf_counter() < end:
             pass
 
@@ -105,15 +119,15 @@ class PPMTransmitter:
 
             for us in ch_us:
                 lgpio.gpio_write(h, self.gpio_pin, 1)
-                self._busy_wait(PULSE_US)
+                self._busy_wait(PULSE_US)          # 300μs — pure busy-wait
                 lgpio.gpio_write(h, self.gpio_pin, 0)
-                self._busy_wait(us - PULSE_US)
+                self._hybrid_wait(us - PULSE_US)   # ~1200μs — sleep + busy-wait tail
 
             # Sync pulse
             lgpio.gpio_write(h, self.gpio_pin, 1)
             self._busy_wait(PULSE_US)
             lgpio.gpio_write(h, self.gpio_pin, 0)
-            self._busy_wait(sync_gap)
+            self._hybrid_wait(sync_gap)            # ~7800μs — sleep + tail
 
         lgpio.gpio_write(h, self.gpio_pin, 0)
         lgpio.gpiochip_close(h)
