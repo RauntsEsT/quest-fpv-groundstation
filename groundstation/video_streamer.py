@@ -59,6 +59,7 @@ class VideoStreamer:
                         pass
 
     async def start(self):
+        import os
         cmd = [
             "ffmpeg", "-y",
             "-fflags", "nobuffer",
@@ -77,12 +78,34 @@ class VideoStreamer:
             "pipe:1",
         ]
         log.info(f"Video: {self.device} → MJPEG HTTP /video ({self.fps}fps)")
-        self._proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        await self._read_frames()
+        retry = 0
+        while True:
+            if not os.path.exists(self.device):
+                log.warning(f"{self.device} pole saadaval, ootan 3s...")
+                await asyncio.sleep(3)
+                continue
+            try:
+                self._proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                retry = 0
+                await self._read_frames()
+                log.warning("ffmpeg lõpetas — taaskäivitan...")
+            except Exception as e:
+                log.error(f"Video viga: {e}")
+            finally:
+                if self._proc:
+                    try:
+                        self._proc.terminate()
+                    except Exception:
+                        pass
+                    self._proc = None
+            retry += 1
+            wait = min(2 * retry, 10)
+            log.info(f"Video restart #{retry}, ootan {wait}s...")
+            await asyncio.sleep(wait)
 
     async def stop(self):
         if self._proc:
