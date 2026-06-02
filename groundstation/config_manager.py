@@ -14,8 +14,10 @@ DEFAULT = {
         "channel": 2
     },
     "tx": {
-        "port": "/dev/ttyAMA0",
-        "baud": 400000
+        "type":     "ppm",
+        "gpio_pin": 18,
+        "port":     "/dev/ttyAMA0",
+        "baud":     400000
     },
     "telemetry": {
         "drivers": ["dummy"],

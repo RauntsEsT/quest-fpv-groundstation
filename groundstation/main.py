@@ -5,6 +5,7 @@ import os
 import config_manager
 from vrx_manager import create_vrx
 from crossfire_tx import CrossfireTX
+from ppm_tx import PPMTransmitter
 from video_streamer import VideoStreamer
 from controller_receiver import ControllerReceiver
 from telemetry_manager import TelemetryManager
@@ -34,9 +35,17 @@ async def main():
         except Exception as e:
             log.warning(f"VRX channel restore failed: {e}")
 
-    tx_port = cfg.get("tx", {}).get("port", TX_PORT)
-    tx_baud = cfg.get("tx", {}).get("baud", TX_BAUD)
-    tx    = CrossfireTX(tx_port, tx_baud)
+    tx_cfg  = cfg.get("tx", {})
+    tx_type = tx_cfg.get("type", "crsf")
+    if tx_type == "ppm":
+        gpio_pin = tx_cfg.get("gpio_pin", 18)
+        tx = PPMTransmitter(gpio_pin)
+        log.info(f"TX mode: PPM on GPIO{gpio_pin} (pin 12)")
+    else:
+        tx_port = tx_cfg.get("port", TX_PORT)
+        tx_baud = tx_cfg.get("baud", TX_BAUD)
+        tx = CrossfireTX(tx_port, tx_baud)
+        log.info(f"TX mode: CRSF on {tx_port}@{tx_baud}")
     video = VideoStreamer(VIDEO_DEVICE, VIDEO_PORT)
     ctrl  = ControllerReceiver(UDP_CTRL_PORT, tx, cfg)
     telem = TelemetryManager(cfg["telemetry"]["drivers"],
@@ -44,7 +53,7 @@ async def main():
                               for k in cfg["telemetry"]["drivers"]})
 
     log.info(f"Quest FPV Ground Station — VRX:{cfg['vrx']['driver']} "
-             f"TX:{tx_port}@{tx_baud} TELEM:{cfg['telemetry']['drivers']}")
+             f"TX:{tx_type} TELEM:{cfg['telemetry']['drivers']}")
     await asyncio.gather(
         vrx.start(),
         tx.start(),
