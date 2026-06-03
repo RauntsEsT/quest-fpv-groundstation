@@ -89,6 +89,9 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 .zoom-btn{background:none;border:none;color:#e6edf3;font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1}
 #zoom-label{font-size:0.78rem;color:#58a6ff;font-weight:700;min-width:38px;text-align:center}
 #zoom-slider{width:100px;accent-color:#58a6ff}
+.fit-btn{background:#21262d;border:1px solid #30363d;border-radius:12px;color:#8b949e;font-size:0.7rem;padding:3px 8px;cursor:pointer;white-space:nowrap}
+.fit-btn.active{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
+#zoom-sep{width:1px;height:20px;background:#30363d}
 .fly-widget{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none;-webkit-user-select:none;touch-action:none;z-index:1}
 #fly-canvas.editing .fly-widget{outline:2px dashed #58a6ff55;border-radius:14px;padding:6px 8px;background:#58a6ff09;cursor:grab}
 .edit-handle{font-size:1rem;color:#58a6ff66;display:none;line-height:1;pointer-events:none;letter-spacing:1px}
@@ -135,6 +138,10 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
       <span id="zoom-label">100%</span>
       <button class="zoom-btn" onclick="setVideoZoom(videoZoom + 0.1)">+</button>
       <button class="zoom-btn" onclick="setVideoZoom(1)" title="Reset">⌂</button>
+      <div id="zoom-sep"></div>
+      <button class="fit-btn active" id="fit-contain" onclick="setVideoFit('contain')">Mahub</button>
+      <button class="fit-btn" id="fit-cover" onclick="setVideoFit('cover')">Täidab</button>
+      <button class="fit-btn" id="fit-fill" onclick="setVideoFit('fill')">Venib</button>
     </div>
     <div class="fly-widget" id="widget-stick-l">
       <div class="edit-handle">⠿⠿⠿</div>
@@ -1080,8 +1087,25 @@ document.addEventListener('wheel', e => {
   }, {passive: true});
 })();
 
-// Taasta salvestatud zoom
-document.addEventListener('DOMContentLoaded', () => setVideoZoom(videoZoom));
+// Video fit mode
+let videoFit = localStorage.getItem('fpv_video_fit') || 'contain';
+
+function setVideoFit(mode) {
+  videoFit = mode;
+  const vid = document.getElementById('fpv-video');
+  if (vid) vid.style.objectFit = mode;
+  ['contain','cover','fill'].forEach(m => {
+    const b = document.getElementById('fit-'+m);
+    if (b) b.classList.toggle('active', m === mode);
+  });
+  localStorage.setItem('fpv_video_fit', mode);
+}
+
+// Taasta salvestatud zoom ja fit
+document.addEventListener('DOMContentLoaded', () => {
+  setVideoZoom(videoZoom);
+  setVideoFit(videoFit);
+});
 
 // ── Täisekraan ───────────────────────────────────────────────────────────
 function toggleFullscreen() {
