@@ -59,6 +59,10 @@ CRSF_RANGE  = 819  # 992 ± 819 = 172..1811
 
 _POWER_TABLE = [0, 10, 25, 100, 500, 1000, 2000, 250, 50]  # mW indexed by CRSF power enum
 
+# Model ID subcommand constants (from EdgeTX crossfire.cpp)
+CRSF_SUBCOMMAND_CRSF        = 0x10
+CRSF_COMMAND_MODEL_SELECT   = 0x05
+
 
 # ── Frame builders ─────────────────────────────────────────────────────────
 
@@ -70,6 +74,42 @@ def _crc8(data: bytes) -> int:
             crc = ((crc << 1) ^ 0xD5) if crc & 0x80 else crc << 1
             crc &= 0xFF
     return crc
+
+
+def _crc8_ba(data: bytes) -> int:
+    """CRC8 with polynomial 0xBA — used in Model ID frame (EdgeTX crossfire.cpp)."""
+    crc = 0
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0xBA) if crc & 0x80 else crc << 1
+            crc &= 0xFF
+    return crc
+
+
+def build_model_id_frame(model_id: int = 0) -> bytes:
+    """
+    Model ID frame — tells Crossfire TX which model is active.
+    EdgeTX sends this at startup and after 500ms module silence.
+    Without it, module may not activate RF output.
+
+    Format (from EdgeTX createCrossfireModelIDFrame):
+    [0xC8][8][0x32][0xEE][0xEA][0x10][0x05][model_id][crc8_BA][crc8]
+    """
+    frame = bytes([
+        CRSF_ADDR_FC,              # 0xC8 sync/radio address
+        8,                          # length = 8 bytes following
+        CRSF_TYPE_COMMAND,         # 0x32
+        CRSF_ADDR_TX_MODULE,       # 0xEE destination
+        CRSF_ADDR_GROUND_STATION,  # 0xEA source
+        CRSF_SUBCOMMAND_CRSF,      # 0x10
+        CRSF_COMMAND_MODEL_SELECT, # 0x05
+        model_id & 0xFF,
+    ])
+    payload = frame[2:]             # bytes after sync+len
+    crc_ba  = _crc8_ba(payload)    # crc8_BA over 6 bytes
+    crc     = _crc8(payload + bytes([crc_ba]))  # crc8 over 7 bytes
+    return frame + bytes([crc_ba, crc])
 
 
 def _ch(v: float) -> int:
@@ -187,6 +227,15 @@ class CrossfireTX:
         """Send 16-channel CRSF RC frame. channels = tuple of float -1.0..1.0."""
         self._channels = channels
         self._write(build_rc_frame(channels))
+
+    def send_model_id(self, model_id: int = 0):
+        """
+        Send Model ID frame — required for Crossfire RF activation.
+        EdgeTX sends this at startup and after 500ms module silence.
+        model_id 0 = first model slot (matches radio default).
+        """
+        self._write(build_model_id_frame(model_id))
+        log.debug(f"Model ID frame sent (model={model_id})")
 
     def ping(self):
         """Broadcast device ping — TX module will respond with DEVICE_INFO."""
@@ -402,6 +451,8 @@ class CrossfireTX:
 
     async def start(self):
         log.info(f"Crossfire TX starting on {self.port}")
+        # EdgeTX sends Model ID at startup — required to activate RF output
+        self.send_model_id(0)
         self.ping()
         tick = 0
         while True:
@@ -411,8 +462,11 @@ class CrossfireTX:
             if self._serial:
                 self._drain_rx()
                 self._process_buf()
-            # Periodic re-ping to refresh device info
             tick += 1
-            if tick % 250 == 0:   # every ~5 s
+            # Model ID every ~2s (EdgeTX sends after 500ms silence detection)
+            if tick % 100 == 0:
+                self.send_model_id(0)
+            # Ping every ~5s to refresh device info
+            if tick % 250 == 0:
                 self.ping()
             await asyncio.sleep(0.02)
