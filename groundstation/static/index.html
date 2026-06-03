@@ -83,7 +83,12 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 .btn-fs{background:none;border:1px solid #30363d;border-radius:6px;color:#8b949e;padding:6px 10px;font-size:0.8rem;cursor:pointer;touch-action:manipulation}
 .btn-fs:active{color:#58a6ff;border-color:#58a6ff}
 #fly-canvas{position:relative;flex:1;overflow:hidden;background:#000}
-#fpv-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;z-index:0;background:#000}
+#fpv-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;z-index:0;background:#000;transform-origin:center center;transition:transform .1s ease}
+#video-zoom-bar{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:10;background:#161b22cc;border:1px solid #30363d;border-radius:20px;padding:6px 14px;display:none;align-items:center;gap:10px;backdrop-filter:blur(4px)}
+#video-zoom-bar.visible{display:flex}
+.zoom-btn{background:none;border:none;color:#e6edf3;font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1}
+#zoom-label{font-size:0.78rem;color:#58a6ff;font-weight:700;min-width:38px;text-align:center}
+#zoom-slider{width:100px;accent-color:#58a6ff}
 .fly-widget{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none;-webkit-user-select:none;touch-action:none;z-index:1}
 #fly-canvas.editing .fly-widget{outline:2px dashed #58a6ff55;border-radius:14px;padding:6px 8px;background:#58a6ff09;cursor:grab}
 .edit-handle{font-size:1rem;color:#58a6ff66;display:none;line-height:1;pointer-events:none;letter-spacing:1px}
@@ -123,6 +128,14 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
   </div>
   <div id="fly-canvas">
     <img id="fpv-video" src="/video" alt="">
+    <div id="video-zoom-bar">
+      <button class="zoom-btn" onclick="setVideoZoom(videoZoom - 0.1)">−</button>
+      <input type="range" id="zoom-slider" min="50" max="300" value="100"
+             oninput="setVideoZoom(this.value/100)">
+      <span id="zoom-label">100%</span>
+      <button class="zoom-btn" onclick="setVideoZoom(videoZoom + 0.1)">+</button>
+      <button class="zoom-btn" onclick="setVideoZoom(1)" title="Reset">⌂</button>
+    </div>
     <div class="fly-widget" id="widget-stick-l">
       <div class="edit-handle">⠿⠿⠿</div>
       <div class="stick-zone" id="stick-l">
@@ -961,6 +974,8 @@ function setEditMode(val) {
   editMode = val;
   document.getElementById('fly-canvas').classList.toggle('editing', val);
   document.getElementById('edit-save-bar').style.display = val ? 'flex' : 'none';
+  const zoomBar = document.getElementById('video-zoom-bar');
+  if (zoomBar) zoomBar.classList.toggle('visible', val);
   const btn = document.getElementById('edit-layout-btn');
   if (btn) btn.classList.toggle('active', val);
   if (val) stickResets.forEach(fn => fn());
@@ -1024,6 +1039,49 @@ function setupWidgetDrag(widgetId) {
 
 WIDGET_IDS.forEach(setupWidgetDrag);
 loadFlyLayout();
+
+// ── Video zoom ───────────────────────────────────────────────────────────
+let videoZoom = parseFloat(localStorage.getItem('fpv_video_zoom') || '1');
+
+function setVideoZoom(z) {
+  videoZoom = Math.max(0.5, Math.min(3.0, parseFloat(z)));
+  const vid = document.getElementById('fpv-video');
+  const lbl = document.getElementById('zoom-label');
+  const sld = document.getElementById('zoom-slider');
+  if (vid) vid.style.transform = `scale(${videoZoom})`;
+  if (lbl) lbl.textContent = Math.round(videoZoom * 100) + '%';
+  if (sld) sld.value = Math.round(videoZoom * 100);
+  localStorage.setItem('fpv_video_zoom', videoZoom);
+}
+
+// Scroll wheel zoom
+document.addEventListener('wheel', e => {
+  if (!flyTabActive) return;
+  e.preventDefault();
+  setVideoZoom(videoZoom + (e.deltaY < 0 ? 0.05 : -0.05));
+}, {passive: false});
+
+// Pinch-to-zoom
+(function() {
+  let initDist = 0, initZoom = 1;
+  document.addEventListener('touchstart', e => {
+    if (!flyTabActive || e.touches.length !== 2) return;
+    initDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY);
+    initZoom = videoZoom;
+  }, {passive: true});
+  document.addEventListener('touchmove', e => {
+    if (!flyTabActive || e.touches.length !== 2) return;
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY);
+    if (initDist > 0) setVideoZoom(initZoom * d / initDist);
+  }, {passive: true});
+})();
+
+// Taasta salvestatud zoom
+document.addEventListener('DOMContentLoaded', () => setVideoZoom(videoZoom));
 
 // ── Täisekraan ───────────────────────────────────────────────────────────
 function toggleFullscreen() {
