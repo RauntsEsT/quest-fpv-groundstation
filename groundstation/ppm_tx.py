@@ -106,9 +106,21 @@ class PPMTransmitter:
         return int(CENTER_US + max(-1.0, min(1.0, v)) * (MAX_US - CENTER_US))
 
     def _ppm_loop(self):
-        import lgpio
-        h = lgpio.gpiochip_open(4)
-        lgpio.gpio_claim_output(h, self.gpio_pin, 0)
+        import lgpio, time as _time
+        # Oota kuni gpiochip4 on valmis (boot-ajal võib hilinemisega tulla)
+        retries = 0
+        while True:
+            try:
+                h = lgpio.gpiochip_open(4)
+                lgpio.gpio_claim_output(h, self.gpio_pin, 0)
+                break
+            except Exception as e:
+                retries += 1
+                if retries > 10:
+                    log.error(f"PPM: ei saa GPIO avada pärast {retries} katset: {e}")
+                    return
+                log.warning(f"PPM GPIO ei ole valmis, ootan... ({retries})")
+                _time.sleep(2)
         self._h = h
         log.info(f"PPM TX running on GPIO{self.gpio_pin} (pin {self.gpio_pin})")
 
