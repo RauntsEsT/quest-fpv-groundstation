@@ -84,6 +84,18 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
     async def get_tx_status():
         return tx.get_status()
 
+    @app.get("/api/tx/jitter")
+    async def get_tx_jitter():
+        if hasattr(tx, 'get_jitter'):
+            return tx.get_jitter()
+        return {}
+
+    @app.post("/api/tx/jitter/reset")
+    async def reset_tx_jitter():
+        if hasattr(tx, 'reset_jitter'):
+            tx.reset_jitter()
+        return {"ok": True}
+
     @app.get("/api/tx/params")
     async def get_tx_params():
         return tx.get_params()

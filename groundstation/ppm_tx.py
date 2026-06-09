@@ -59,6 +59,7 @@ class PPMTransmitter:
         self._ch_us    = [CENTER_US, CENTER_US, MIN_US, CENTER_US] + [MIN_US] * (NUM_CH - 4)
         self._running  = False
         self._timing   = None
+        self._jitter   = {'frames': 0, 'max_err_us': 0, 'sum_sq_us': 0.0, 'sum_err_us': 0.0}
 
     # ── Kanalite seadmine ──────────────────────────────────────────────────
 
@@ -85,6 +86,21 @@ class PPMTransmitter:
         return {"mode": "ppm", "gpio_pin": self.gpio_pin, "device": None,
                 "link_quality": 0, "rssi_ant1": 0, "rssi_ant2": 0,
                 "snr": 0, "tx_power_mw": 0}
+
+    def get_jitter(self) -> dict:
+        j = self._jitter
+        n = j['frames'] or 1
+        avg = j['sum_err_us'] / n
+        variance = j['sum_sq_us'] / n - avg * avg
+        return {
+            'frames': j['frames'],
+            'avg_err_us': round(avg, 2),
+            'max_err_us': round(j['max_err_us'], 2),
+            'stddev_us': round(variance ** 0.5 if variance > 0 else 0.0, 2),
+        }
+
+    def reset_jitter(self):
+        self._jitter = {'frames': 0, 'max_err_us': 0, 'sum_sq_us': 0.0, 'sum_err_us': 0.0}
 
     def get_params(self) -> list:
         return []
@@ -144,6 +160,15 @@ class PPMTransmitter:
                     lgpio.gpio_write(h, self.gpio_pin, 0)
                     t += sync_gap * 1000
                     wait_until(ctypes.c_long(t))
+                    # Mõõda frame timing täpsust
+                    actual_end = timing.monotonic_ns()
+                    err_us = abs(actual_end - (t)) / 1000.0
+                    j = self._jitter
+                    j['frames'] += 1
+                    if err_us > j['max_err_us']:
+                        j['max_err_us'] = err_us
+                    j['sum_err_us'] += err_us
+                    j['sum_sq_us'] += err_us * err_us
 
             except Exception as e:
                 log.error(f"PPM TX: krahh — {e}. Taaskäivitan {retry_delay:.1f}s pärast.")
