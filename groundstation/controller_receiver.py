@@ -23,11 +23,14 @@ class ControllerReceiver:
     async def _failsafe_watchdog(self):
         while True:
             await asyncio.sleep(0.2)
-            if time.monotonic() - self._last_rx > FAILSAFE_TIMEOUT:
-                if not self._in_failsafe:
-                    log.warning("Kontroller lahutus - failsafe aktiivne (throttle min)")
-                    self._in_failsafe = True
-                self.elrs.send_channels(FAILSAFE_CHANNELS)
+            try:
+                if time.monotonic() - self._last_rx > FAILSAFE_TIMEOUT:
+                    if not self._in_failsafe:
+                        log.warning("Kontroller lahutus - failsafe aktiivne (throttle min)")
+                        self._in_failsafe = True
+                    self.elrs.send_channels(FAILSAFE_CHANNELS)
+            except Exception as e:
+                log.error(f"Failsafe watchdog viga: {e}")
 
     async def start(self):
         log.info(f"Listening for controller data on UDP port {self.port}")
@@ -36,11 +39,21 @@ class ControllerReceiver:
             lambda: _UDPProtocol(self.elrs, self.mapper, self),
             local_addr=("0.0.0.0", self.port),
         )
-        asyncio.ensure_future(self._failsafe_watchdog())
+        wdog = asyncio.create_task(self._failsafe_watchdog())
+        wdog.add_done_callback(
+            lambda t: log.critical(f"FAILSAFE WATCHDOG SURI: {t.exception()}")
+            if not t.cancelled() and t.exception() else None
+        )
         try:
             await asyncio.Future()
         finally:
             transport.close()
+            wdog.cancel()
+
+    def web_controller_disconnect(self):
+        """Kutsuda kui web WebSocket controller lahutab — aktiveerib failsafe kohe."""
+        self._in_failsafe = True
+        self._last_rx = 0.0
 
 
 class _UDPProtocol(asyncio.DatagramProtocol):

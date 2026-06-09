@@ -66,9 +66,18 @@ def load() -> dict:
 
 
 def save(cfg: dict):
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
-    log.info("Config saved")
+    import tempfile
+    tmp_path = CONFIG_PATH + ".tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(cfg, f, indent=2)
+        os.replace(tmp_path, CONFIG_PATH)
+        log.info("Config saved")
+    except Exception as e:
+        log.error(f"Config save failed: {e}")
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

@@ -170,7 +170,9 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
                 tx.send_channels(channels)
                 _last_channels[:] = channels
         except WebSocketDisconnect:
-            log.info("Web controller disconnected")
+            log.info("Web controller disconnected — failsafe aktiivseks")
+            if ctrl:
+                ctrl.web_controller_disconnect()
 
     # ── MJPEG video stream ─────────────────────────────────────────────────
 
