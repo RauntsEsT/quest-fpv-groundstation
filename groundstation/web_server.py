@@ -15,6 +15,7 @@ app = FastAPI(title="Quest FPV Ground Station")
 
 def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
     _last_channels = [0.0] * 16
+    _test_locked = False
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
@@ -96,6 +97,24 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
             tx.reset_jitter()
         return {"ok": True}
 
+    @app.post("/api/test/lock")
+    async def test_lock():
+        nonlocal _test_locked
+        _test_locked = True
+        log.info("Test mode LUKUS — web controller blokeeritud")
+        return {"ok": True, "locked": True}
+
+    @app.post("/api/test/unlock")
+    async def test_unlock():
+        nonlocal _test_locked
+        _test_locked = False
+        log.info("Test mode AVATUD — web controller lubatud")
+        return {"ok": True, "locked": False}
+
+    @app.get("/api/test/lock")
+    async def test_lock_status():
+        return {"locked": _test_locked}
+
     @app.get("/api/tx/params")
     async def get_tx_params():
         return tx.get_params()
@@ -176,6 +195,8 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
                 msg     = json.loads(text)
                 axes    = msg.get("axes", [0.0, 0.0, 0.0, 0.0])
                 buttons = msg.get("buttons", {})
+                if _test_locked:
+                    continue  # test mode aktiivne — ignoreeri web controller sisendit
                 channels = ctrl.mapper.map_web_input(axes, buttons)
                 ctrl._last_rx = time.monotonic()
                 ctrl._in_failsafe = False
