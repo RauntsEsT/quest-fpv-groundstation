@@ -16,9 +16,17 @@ class ControllerReceiver:
         self.mapper = ChannelMapper(config)
         self._last_rx     = 0.0
         self._in_failsafe = True
+        self._test_mode   = False  # kui True, UDP sisend ignoreeritakse
 
     def update_config(self, cfg: dict):
         self.mapper.update_config(cfg)
+
+    def set_test_mode(self, enabled: bool):
+        self._test_mode = enabled
+        if enabled:
+            log.info("Test mode AKTIIVNE — UDP controller sisend blokeeritud")
+        else:
+            log.info("Test mode INAKTIIVNE — UDP controller lubatud")
 
     async def _failsafe_watchdog(self):
         while True:
@@ -65,6 +73,8 @@ class _UDPProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data: bytes, addr):
         if len(data) not in (PACKET_SIZE, LEGACY_SIZE):
             return
+        if self.receiver._test_mode:
+            return  # test mode — ignoreeri UDP sisendit
         if self.receiver._in_failsafe:
             log.info("Kontroller uhendas")
             self.receiver._in_failsafe = False

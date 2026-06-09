@@ -101,14 +101,18 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
     async def test_lock():
         nonlocal _test_locked
         _test_locked = True
-        log.info("Test mode LUKUS — web controller blokeeritud")
+        if ctrl:
+            ctrl.set_test_mode(True)
+        log.info("Test mode LUKUS — web + UDP controller blokeeritud")
         return {"ok": True, "locked": True}
 
     @app.post("/api/test/unlock")
     async def test_unlock():
         nonlocal _test_locked
         _test_locked = False
-        log.info("Test mode AVATUD — web controller lubatud")
+        if ctrl:
+            ctrl.set_test_mode(False)
+        log.info("Test mode AVATUD — web + UDP controller lubatud")
         return {"ok": True, "locked": False}
 
     @app.get("/api/test/lock")
