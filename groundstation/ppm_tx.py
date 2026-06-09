@@ -37,6 +37,8 @@ def _load_timing_lib():
     lib = ctypes.CDLL(os.path.join(here, "ppm_timing.so"))
     lib.busywait_us.restype  = None
     lib.busywait_us.argtypes = [ctypes.c_long]
+    lib.busywait_until_ns.restype  = None
+    lib.busywait_until_ns.argtypes = [ctypes.c_long]
     lib.monotonic_ns.restype  = ctypes.c_long
     lib.monotonic_ns.argtypes = []
     return lib
@@ -118,24 +120,30 @@ class PPMTransmitter:
                 lgpio.gpio_claim_output(h, self.gpio_pin, 0)
                 log.info(f"PPM TX: jookseb GPIO{self.gpio_pin} (Python lgpio + C timing)")
 
-                wait = timing.busywait_us
+                wait_until = timing.busywait_until_ns
+                now_ns     = timing.monotonic_ns
                 retry_delay = 1.0  # reset on success
 
                 while self._running:
                     ch_us = self._ch_us[:]
-                    used = sum(ch_us)
-                    sync_gap = max(FRAME_US - used - PULSE_US, 3000)
+                    sync_gap = max(FRAME_US - sum(ch_us) - PULSE_US, 3000)
 
+                    # Absoluutsed ajatemplid — kompenseerib gpio_write() latentsi
+                    t = now_ns()
                     for us in ch_us:
                         lgpio.gpio_write(h, self.gpio_pin, 1)
-                        wait(ctypes.c_long(PULSE_US))
+                        t += PULSE_US * 1000
+                        wait_until(ctypes.c_long(t))
                         lgpio.gpio_write(h, self.gpio_pin, 0)
-                        wait(ctypes.c_long(us - PULSE_US))
-
+                        t += (us - PULSE_US) * 1000
+                        wait_until(ctypes.c_long(t))
+                    # Sync pulse
                     lgpio.gpio_write(h, self.gpio_pin, 1)
-                    wait(ctypes.c_long(PULSE_US))
+                    t += PULSE_US * 1000
+                    wait_until(ctypes.c_long(t))
                     lgpio.gpio_write(h, self.gpio_pin, 0)
-                    wait(ctypes.c_long(sync_gap))
+                    t += sync_gap * 1000
+                    wait_until(ctypes.c_long(t))
 
             except Exception as e:
                 log.error(f"PPM TX: krahh — {e}. Taaskäivitan {retry_delay:.1f}s pärast.")
