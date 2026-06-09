@@ -194,7 +194,7 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
         return StreamingResponse(
             generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
-    SAFE_CH_US = [1500, 1500, 1500, 1000, 1000, 1000, 1000, 1000]
+    SAFE_CH_US = [1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]
 
     @app.post("/api/test/set")
     async def test_set_channels(request: Request):

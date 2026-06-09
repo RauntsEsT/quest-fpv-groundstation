@@ -6,7 +6,7 @@ from channel_mapper import ChannelMapper, PACKET_SIZE, LEGACY_SIZE
 log = logging.getLogger("controller_receiver")
 
 FAILSAFE_TIMEOUT  = 1.0
-FAILSAFE_CHANNELS = tuple([0.0, 0.0, 0.0, -1.0] + [-1.0] * 12)  # ch3=yaw center, ch4=throttle min
+FAILSAFE_CHANNELS = tuple([0.0, 0.0, -1.0, 0.0] + [-1.0] * 12)  # ch3=throttle min, ch4=yaw center
 
 
 class ControllerReceiver:

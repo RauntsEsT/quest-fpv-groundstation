@@ -54,7 +54,7 @@ class PPMTransmitter:
         self.device    = None
         self.params    = {}
         # Turvaline vaikimisi: throttle min, arm off
-        self._ch_us    = [CENTER_US, CENTER_US, CENTER_US, MIN_US] + [MIN_US] * (NUM_CH - 4)
+        self._ch_us    = [CENTER_US, CENTER_US, MIN_US, CENTER_US] + [MIN_US] * (NUM_CH - 4)
         self._running  = False
         self._timing   = None
 
