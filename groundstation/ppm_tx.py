@@ -1,27 +1,26 @@
 """
-PPM RC signal generator for TBS Crossfire PPM input (pin 1).
-Wiring: RPi GPIO18 (physical pin 12) → Crossfire PPM pad (pin 1)
+PPM RC signal generator — Python lgpio GPIO + C busy-wait timing.
 
-PPM frame structure (positive polarity):
-  [pulse][ch1_gap][pulse][ch2_gap]...[pulse][sync_gap]
-  pulse = 300μs HIGH, gap encodes channel value
-  total frame = 22.5ms (≈44Hz)
+Python lgpio teeb GPIO kirjutamisi (ainus viis mis RPi5 RP1 chipiga töötab).
+C teek (ppm_timing.so) teeb täpse busy-wait ajastuse GIL-i vabastades.
+CPU3 affinity + SCHED_FIFO prio 99 minimeerivad jitter-i.
 """
 import asyncio
+import ctypes
+import ctypes.util
 import logging
-import time
-import threading
+import os
 from dataclasses import dataclass
 
 log = logging.getLogger("ppm_tx")
 
-PPM_GPIO   = 18      # GPIO18 = physical pin 12
-FRAME_US   = 22500   # 22.5ms frame period
-PULSE_US   = 300     # 300μs high pulse per channel slot
-MIN_US     = 1000    # channel min (1ms)
-MAX_US     = 2000    # channel max (2ms)
-CENTER_US  = 1500    # channel center (1.5ms)
-NUM_CH     = 8       # standard PPM = 8 channels
+PPM_GPIO  = 18
+FRAME_US  = 22500
+PULSE_US  = 300
+MIN_US    = 1000
+MAX_US    = 2000
+CENTER_US = 1500
+NUM_CH    = 8
 
 
 @dataclass
@@ -33,11 +32,20 @@ class LinkStats:
     tx_power_mw: int  = 0
 
 
+def _load_timing_lib():
+    here = os.path.dirname(os.path.abspath(__file__))
+    lib = ctypes.CDLL(os.path.join(here, "ppm_timing.so"))
+    lib.busywait_us.restype  = None
+    lib.busywait_us.argtypes = [ctypes.c_long]
+    lib.monotonic_ns.restype  = ctypes.c_long
+    lib.monotonic_ns.argtypes = []
+    return lib
+
+
 class PPMTransmitter:
     """
-    Generates hardware-timed PPM on a single GPIO pin.
-    Drop-in replacement for CrossfireTX — same send_channels() interface.
-    Uses busy-wait for microsecond precision (runs in a dedicated thread).
+    PPM generaator: Python lgpio GPIO kirjutised + C täpne ajastus.
+    send_channels() võtab float -1.0..1.0, set_raw_us() võtab otse µs.
     """
 
     def __init__(self, gpio_pin: int = PPM_GPIO):
@@ -45,98 +53,123 @@ class PPMTransmitter:
         self.stats     = LinkStats()
         self.device    = None
         self.params    = {}
-        self._channels = [0.0] * NUM_CH
+        # Turvaline vaikimisi: throttle min, arm off
+        self._ch_us    = [CENTER_US, CENTER_US, CENTER_US, MIN_US] + [MIN_US] * (NUM_CH - 4)
         self._running  = False
-        self._h        = None
+        self._timing   = None
 
-    # ── Channel interface (same as CrossfireTX) ────────────────────────────
+    # ── Kanalite seadmine ──────────────────────────────────────────────────
 
     def send_channels(self, channels: tuple):
-        """Accept float -1.0..1.0 per channel, same as CrossfireTX."""
-        self._channels = list(channels[:NUM_CH]) + \
-                         [0.0] * max(0, NUM_CH - len(channels))
+        """Float -1.0..1.0 → µs."""
+        for i in range(min(NUM_CH, len(channels))):
+            v = max(-1.0, min(1.0, float(channels[i])))
+            self._ch_us[i] = int(CENTER_US + v * (MAX_US - CENTER_US))
 
-    # ── No-op stubs for web_server compatibility ───────────────────────────
+    def set_raw_us(self, us_values: list):
+        """Otse µs väärtused (test lehelt)."""
+        for i in range(min(NUM_CH, len(us_values))):
+            self._ch_us[i] = max(MIN_US, min(MAX_US, int(us_values[i])))
+
+    # ── No-op stubs ────────────────────────────────────────────────────────
 
     def ping(self): pass
     def bind(self): pass
     def write_param(self, index, value): pass
     def write_param_uint8(self, index, value): pass
-
     async def enumerate_params(self): pass
 
     def get_status(self) -> dict:
-        return {
-            "mode":         "ppm",
-            "gpio_pin":     self.gpio_pin,
-            "device":       None,
-            "link_quality": 0,
-            "rssi_ant1":    0,
-            "rssi_ant2":    0,
-            "snr":          0,
-            "tx_power_mw":  0,
-        }
+        return {"mode": "ppm", "gpio_pin": self.gpio_pin, "device": None,
+                "link_quality": 0, "rssi_ant1": 0, "rssi_ant2": 0,
+                "snr": 0, "tx_power_mw": 0}
 
     def get_params(self) -> list:
         return []
 
-    # ── PPM generation ─────────────────────────────────────────────────────
+    # ── PPM loop ───────────────────────────────────────────────────────────
 
-    @staticmethod
-    def _busy_wait(us: int):
-        """Pure busy-wait — only for short final segments (< 500μs)."""
-        end = time.perf_counter() + us * 1e-6
-        while time.perf_counter() < end:
-            pass
-
-    @staticmethod
-    def _hybrid_wait(us: int):
-        """
-        Sleep for most of the duration, busy-wait only the last 400μs.
-        Releases GIL during sleep → asyncio event loop can run.
-        """
-        BUSY_TAIL_US = 400
-        if us > BUSY_TAIL_US:
-            time.sleep((us - BUSY_TAIL_US) * 1e-6)
-        end = time.perf_counter() + BUSY_TAIL_US * 1e-6
-        while time.perf_counter() < end:
-            pass
-
-    def _ch_us(self, v: float) -> int:
-        return int(CENTER_US + max(-1.0, min(1.0, v)) * (MAX_US - CENTER_US))
+    def _set_rt(self):
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        SCHED_FIFO = 1
+        class sp(ctypes.Structure):
+            _fields_ = [("sched_priority", ctypes.c_int)]
+        ret = libc.sched_setscheduler(0, SCHED_FIFO, ctypes.byref(sp(99)))
+        if ret == 0:
+            log.info("PPM TX: SCHED_FIFO prio 99")
+        # CPU3 affinity
+        try:
+            os.sched_setaffinity(0, {3})
+            log.info("PPM TX: CPU3 affinity seatud")
+        except Exception as e:
+            log.warning(f"PPM TX: affinity viga: {e}")
 
     def _ppm_loop(self):
         import lgpio
-        h = lgpio.gpiochip_open(4)
-        lgpio.gpio_claim_output(h, self.gpio_pin, 0)
-        self._h = h
-        log.info(f"PPM TX running on GPIO{self.gpio_pin} (pin {self.gpio_pin})")
+        import time as _time
+        timing = self._timing
+        retry_delay = 1.0
 
         while self._running:
-            ch_us = [self._ch_us(v) for v in self._channels]
-            used  = sum(ch_us) + NUM_CH * PULSE_US + PULSE_US
-            sync_gap = max(FRAME_US - used, 3000)
+            h = None
+            try:
+                self._set_rt()
+                h = lgpio.gpiochip_open(4)
+                lgpio.gpio_claim_output(h, self.gpio_pin, 0)
+                log.info(f"PPM TX: jookseb GPIO{self.gpio_pin} (Python lgpio + C timing)")
 
-            for us in ch_us:
-                lgpio.gpio_write(h, self.gpio_pin, 1)
-                self._busy_wait(PULSE_US)          # 300μs — pure busy-wait
-                lgpio.gpio_write(h, self.gpio_pin, 0)
-                self._hybrid_wait(us - PULSE_US)   # ~1200μs — sleep + busy-wait tail
+                wait = timing.busywait_us
+                retry_delay = 1.0  # reset on success
 
-            # Sync pulse
-            lgpio.gpio_write(h, self.gpio_pin, 1)
-            self._busy_wait(PULSE_US)
-            lgpio.gpio_write(h, self.gpio_pin, 0)
-            self._hybrid_wait(sync_gap)            # ~7800μs — sleep + tail
+                while self._running:
+                    ch_us = self._ch_us[:]
+                    used = sum(ch_us)
+                    sync_gap = max(FRAME_US - used - PULSE_US, 3000)
 
-        lgpio.gpio_write(h, self.gpio_pin, 0)
-        lgpio.gpiochip_close(h)
+                    for us in ch_us:
+                        lgpio.gpio_write(h, self.gpio_pin, 1)
+                        wait(ctypes.c_long(PULSE_US))
+                        lgpio.gpio_write(h, self.gpio_pin, 0)
+                        wait(ctypes.c_long(us - PULSE_US))
+
+                    lgpio.gpio_write(h, self.gpio_pin, 1)
+                    wait(ctypes.c_long(PULSE_US))
+                    lgpio.gpio_write(h, self.gpio_pin, 0)
+                    wait(ctypes.c_long(sync_gap))
+
+            except Exception as e:
+                log.error(f"PPM TX: krahh — {e}. Taaskäivitan {retry_delay:.1f}s pärast.")
+                retry_delay = min(retry_delay * 2, 10.0)
+            finally:
+                if h is not None:
+                    try:
+                        lgpio.gpio_write(h, self.gpio_pin, 0)
+                        lgpio.gpiochip_close(h)
+                    except Exception:
+                        pass
+                if self._running:
+                    _time.sleep(retry_delay)
+
+        log.info("PPM TX: lõpetatud")
 
     async def start(self):
+        try:
+            self._timing = _load_timing_lib()
+            log.info("PPM TX: C timing teek laetud (ppm_timing.so)")
+        except Exception as e:
+            log.error(f"PPM TX: timing teeki ei leitud: {e}")
+            self._timing = None
+
+        if not self._timing:
+            log.error("PPM TX: ei saa käivituda ilma ppm_timing.so-ta")
+            return
+
         self._running = True
         loop = asyncio.get_event_loop()
-        # Run PPM in thread — busy-wait needs dedicated CPU core
-        await loop.run_in_executor(None, self._ppm_loop)
+        try:
+            await loop.run_in_executor(None, self._ppm_loop)
+        except Exception as e:
+            log.error(f"PPM TX: executor krahh — {e}")
 
     async def stop(self):
         self._running = False

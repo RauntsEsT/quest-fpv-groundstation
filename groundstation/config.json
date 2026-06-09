@@ -1,0 +1,94 @@
+{
+  "vrx": {
+    "driver": "foxeer_uart",
+    "options": {
+      "port": "/dev/ttyAMA2"
+    },
+    "band": "F",
+    "channel": 7,
+    "port": "/dev/ttyAMA2",
+    "baud": 115200
+  },
+  "tx": {
+    "type": "ppm",
+    "gpio_pin": 18,
+    "port": "/dev/ttyAMA0",
+    "baud": 400000
+  },
+  "telemetry": {
+    "drivers": [
+      "crsf"
+    ],
+    "mavlink": {
+      "port": "/dev/ttyAMA4",
+      "baud": 57600
+    },
+    "msp": {
+      "port": "/dev/ttyAMA4",
+      "baud": 115200
+    },
+    "ltm": {
+      "port": "/dev/ttyAMA4",
+      "baud": 2400
+    },
+    "smartport": {
+      "port": "/dev/ttyAMA4",
+      "baud": 57600
+    },
+    "hott": {
+      "port": "/dev/ttyAMA4",
+      "baud": 19200
+    },
+    "foxeer_uart": {
+      "port": "/dev/ttyAMA3",
+      "baud": 115200
+    }
+  },
+  "controller": {
+    "axes": {
+      "ch1_roll": {
+        "src": "rx",
+        "invert": false,
+        "expo": 0.3,
+        "rate": 1
+      },
+      "ch2_pitch": {
+        "src": "ry",
+        "invert": true,
+        "expo": 0.3,
+        "rate": 1
+      },
+      "ch3_throttle": {
+        "src": "ly",
+        "invert": false,
+        "expo": 0.0,
+        "rate": 1
+      },
+      "ch4_yaw": {
+        "src": "lx",
+        "invert": false,
+        "expo": 0.3,
+        "rate": 1
+      }
+    },
+    "dead_zone": 0.05,
+    "buttons": {
+      "ch5": {
+        "src": "btn_a",
+        "mode": "toggle",
+        "on": 1,
+        "off": -1
+      }
+    },
+    "failsafe": {
+      "ch1": 0,
+      "ch2": 0,
+      "ch3": 0,
+      "ch4": -1,
+      "ch5": -1,
+      "ch6": -1,
+      "ch7": -1,
+      "ch8": -1
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import asyncio
+import time
 import json
 import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
@@ -164,6 +165,8 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
                 axes    = msg.get("axes", [0.0, 0.0, 0.0, 0.0])
                 buttons = msg.get("buttons", {})
                 channels = ctrl.mapper.map_web_input(axes, buttons)
+                ctrl._last_rx = time.monotonic()
+                ctrl._in_failsafe = False
                 tx.send_channels(channels)
                 _last_channels[:] = channels
         except WebSocketDisconnect:
@@ -183,13 +186,96 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
                     try:
                         frame = await asyncio.wait_for(q.get(), timeout=5.0)
                         yield BOUNDARY + frame + b"\r\n"
-                    except asyncio.TimeoutError:
-                        break
+                    except asyncio.TimeoutError:  # keepalive handles placeholder
+                        continue
             finally:
                 video_streamer.unsubscribe(q)
 
         return StreamingResponse(
             generate(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+    SAFE_CH_US = [1500, 1500, 1500, 1000, 1000, 1000, 1000, 1000]
+
+    @app.post("/api/test/set")
+    async def test_set_channels(request: Request):
+        body = await request.json()
+        ch = body.get("channels", SAFE_CH_US)
+        if hasattr(tx, "set_raw_us"):
+            tx.set_raw_us(ch)
+        if ctrl:
+            ctrl._last_rx = time.monotonic()
+            ctrl._in_failsafe = False
+        return {"ok": True, "channels": ch}
+
+    @app.post("/api/test/save")
+    async def test_save(request: Request):
+        body = await request.json()
+        mapping = body.get("mapping", {})
+        cfg = config_manager.load()
+        # Funktsioon -> PPM kanal indeks
+        fn_to_ch = {str(v): int(k) for k, v in mapping.items()}
+        # Telje konfiguratsioon controller akseleist
+        axis_src = {"roll": "rx", "pitch": "ry", "throttle": "ly", "yaw": "lx"}
+        axis_invert = {"roll": False, "pitch": True, "throttle": False, "yaw": False}
+        new_axes = {}
+        fn_order = ["roll", "pitch", "throttle", "yaw"]
+        for fn in fn_order:
+            ch_idx = fn_to_ch.get(fn)
+            if ch_idx is None:
+                # Leia vaike positsioon
+                ch_idx = fn_order.index(fn)
+            ch_key = f"ch{ch_idx+1}_{fn}"
+            new_axes[ch_key] = {
+                "src": axis_src.get(fn, "rx"),
+                "invert": axis_invert.get(fn, False),
+                "expo": 0.3 if fn != "throttle" else 0.0,
+                "rate": 1
+            }
+        # ARM kanal
+        arm_ch = fn_to_ch.get("arm", 4)  # vaikimisi CH5
+        arm_key = f"ch{arm_ch+1}"
+        new_buttons = {arm_key: {"src": "btn_a", "mode": "toggle", "on": 1, "off": -1}}
+        # Teine nupp CH6-le
+        remaining = [i for i in range(8) if i not in fn_to_ch.values() and i != arm_ch]
+        if remaining:
+            new_buttons[f"ch{remaining[0]+1}"] = {"src": "btn_b", "mode": "toggle", "on": 1, "off": -1}
+        cfg["controller"]["axes"] = new_axes
+        cfg["controller"]["buttons"] = new_buttons
+        import json as _json
+        with open("config.json", "w") as f:
+            _json.dump(cfg, f, indent=2, ensure_ascii=False)
+        return {"ok": True, "axes": new_axes, "buttons": new_buttons}
+
+    @app.get("/test", response_class=HTMLResponse)
+    async def test_page():
+        with open("static/test.html") as f:
+            return f.read()
+
+    @app.websocket("/ws/test")
+    async def websocket_test(ws: WebSocket):
+        await ws.accept()
+        log.info("Test WebSocket ühendatud")
+        SAFE = [1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]
+        if hasattr(tx, "set_raw_us"):
+            tx.set_raw_us(SAFE)
+        try:
+            while True:
+                text = await ws.receive_text()
+                msg = json.loads(text)
+                if ctrl:
+                    ctrl._last_rx = time.monotonic()
+                    ctrl._in_failsafe = False
+                if "channels" in msg and hasattr(tx, "set_raw_us"):
+                    tx.set_raw_us(msg["channels"])
+                    _last_channels[:] = [(v - 1500) / 500.0 for v in msg["channels"][:16]]
+                elif msg.get("safe"):
+                    if hasattr(tx, "set_raw_us"):
+                        tx.set_raw_us(SAFE)
+                    log.info("Test: turvaline seisund")
+        except WebSocketDisconnect:
+            if hasattr(tx, "set_raw_us"):
+                tx.set_raw_us(SAFE)
+            log.info("Test WebSocket lahutatud")
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
     return app

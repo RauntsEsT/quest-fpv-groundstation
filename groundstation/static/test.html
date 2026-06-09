@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Kanal Test</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;padding-bottom:40px}
+.header{background:#161b22;padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #30363d;position:sticky;top:0;z-index:100}
+.header a{color:#58a6ff;text-decoration:none;font-size:0.85rem}
+.header h1{font-size:1rem;font-weight:700;flex:1;text-align:center}
+.safe-btn{background:#da3633;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:0.85rem;cursor:pointer;touch-action:manipulation}
+.safe-btn:active{opacity:0.7}
+.tabs{display:flex;background:#161b22;border-bottom:1px solid #30363d}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:0.8rem;font-weight:600;cursor:pointer;color:#8b949e;touch-action:manipulation;border-bottom:3px solid transparent}
+.tab.active{color:#58a6ff;border-color:#58a6ff}
+#wizard-tab{padding:0}
+.step-progress{padding:14px 16px;background:#161b22;display:flex;align-items:center;gap:12px;border-bottom:1px solid #30363d}
+.step-dots{display:flex;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;background:#30363d}
+.dot.done{background:#3fb950}
+.dot.active{background:#58a6ff}
+.step-label{font-size:0.8rem;color:#8b949e;flex:1}
+.wizard-body{padding:16px}
+.ch-test-box{background:#161b22;border:2px solid #58a6ff;border-radius:12px;padding:18px;margin-bottom:16px;text-align:center}
+.ch-test-box h2{font-size:1.4rem;font-weight:800;margin-bottom:4px}
+.ch-test-box .us-val{font-size:2.2rem;font-weight:900;color:#58a6ff;margin:8px 0}
+.ch-test-box .hint{font-size:0.8rem;color:#8b949e}
+.warn-box{background:#3d1f00;border:1px solid #d29922;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#d29922;margin-bottom:12px}
+.q-label{font-size:0.9rem;font-weight:600;margin-bottom:10px;color:#e6edf3}
+.fn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.fn-btn{padding:16px 8px;border:2px solid #30363d;background:#161b22;border-radius:10px;color:#e6edf3;font-size:0.9rem;font-weight:600;cursor:pointer;touch-action:manipulation;text-align:center}
+.fn-btn:active{border-color:#58a6ff;background:#1c2128}
+.fn-btn.selected{border-color:#3fb950;background:#1a3a1e;color:#3fb950}
+.fn-btn .icon{font-size:1.4rem;display:block;margin-bottom:4px}
+.nav-row{display:flex;gap:10px;margin-top:8px}
+.btn-next{flex:1;padding:16px;background:#1f6feb;color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;touch-action:manipulation}
+.btn-next:disabled{background:#21262d;color:#484f58}
+.btn-back{padding:16px 24px;background:#21262d;color:#8b949e;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;touch-action:manipulation}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #21262d}
+.result-ch{font-weight:700;color:#8b949e;width:48px}
+.result-fn{font-weight:600;flex:1;padding-left:8px}
+.result-fn.roll,.result-fn.pitch,.result-fn.yaw{color:#58a6ff}
+.result-fn.throttle{color:#f0883e}
+.result-fn.arm{color:#3fb950}
+.result-fn.unknown{color:#484f58}
+.result-us{color:#8b949e;font-size:0.82rem}
+.save-box{padding:16px}
+.btn-save{width:100%;padding:18px;background:#238636;color:#fff;border:none;border-radius:12px;font-size:1.1rem;font-weight:700;cursor:pointer;touch-action:manipulation;margin-bottom:10px}
+.btn-save:disabled{background:#21262d;color:#484f58}
+.info-box{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;font-size:0.82rem;color:#8b949e;margin-bottom:12px;line-height:1.6}
+.info-box strong{color:#e6edf3}
+.btn-restart{width:100%;padding:16px;background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;margin-top:8px}
+#manual-tab{padding:16px}
+.ch-slider{background:#161b22;border-radius:10px;padding:14px;margin-bottom:12px}
+.ch-slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ch-name{font-weight:700;font-size:0.9rem}
+.ch-fn-badge{font-size:0.75rem;padding:2px 8px;border-radius:12px;background:#21262d;color:#8b949e}
+.ch-us-disp{font-size:1.2rem;font-weight:800;color:#58a6ff}
+.ch-slider input[type=range]{width:100%;height:36px;-webkit-appearance:none;background:#30363d;border-radius:18px;outline:none}
+.ch-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;border-radius:50%;background:#58a6ff;cursor:pointer}
+.ch-quick{display:flex;gap:6px;margin-top:8px}
+.ch-quick button{flex:1;padding:8px 4px;background:#21262d;border:none;border-radius:6px;color:#8b949e;font-size:0.75rem;font-weight:600;cursor:pointer;touch-action:manipulation}
+.ch-quick button:active{background:#30363d}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#484f58;display:inline-block;flex-shrink:0}
+.conn-dot.ok{background:#3fb950}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/">Tagasi</a>
+  <h1>PPM Kanal Test</h1>
+  <button class="safe-btn" onclick="safeState()">TURVALINE</button>
+</div>
+<div class="tabs">
+  <div class="tab active" id="tab-wizard" onclick="showTab('wizard')">Wizard</div>
+  <div class="tab" id="tab-manual" onclick="showTab('manual')">Kasitsi</div>
+  <div class="tab" id="tab-results" onclick="showTab('results')">Tulemused</div>
+</div>
+
+<div id="wizard-tab">
+  <div class="step-progress">
+    <div class="step-dots" id="step-dots"></div>
+    <div class="step-label" id="step-label">Valmis alustama</div>
+    <span class="conn-dot" id="conn-dot"></span>
+  </div>
+  <div class="wizard-body" id="wizard-body"></div>
+</div>
+
+<div id="manual-tab" style="display:none">
+  <div id="sliders-container"></div>
+</div>
+
+<div id="results-tab" style="display:none;padding:16px">
+  <div id="results-list"></div>
+  <div class="save-box" id="save-box" style="display:none">
+    <div class="info-box" id="inav-info"></div>
+    <button class="btn-save" id="btn-save" onclick="saveConfig()">Salvesta konfiguratsioon</button>
+    <button class="btn-restart" onclick="location.reload()">Alusta uuesti</button>
+  </div>
+</div>
+
+<script>
+var SAFE_US=[1500,1500,1000,1500,1000,1000,1000,1000];
+var CH_COUNT=8;
+var ws=null;
+var chUs=SAFE_US.slice();
+var keepAliveTimer=null;
+var wizardStep=-1;
+var stepResults={};
+var selectedFn=null;
+
+var FN_OPTIONS=[
+  {id:'roll',icon:'LR',label:'Roll'},
+  {id:'pitch',icon:'UD',label:'Pitch'},
+  {id:'throttle',icon:'UP',label:'Throttle'},
+  {id:'yaw',icon:'YW',label:'Yaw'},
+  {id:'arm',icon:'ARM',label:'Arm Switch'},
+  {id:'skip',icon:'>>',label:'Jata vahele'},
+];
+
+function connect(){
+  ws=new WebSocket('ws://'+location.host+'/ws/test');
+  ws.onopen=function(){
+    document.getElementById('conn-dot').classList.add('ok');
+    sendChannels(SAFE_US);
+    keepAliveTimer=setInterval(function(){sendChannels(chUs);},500);
+  };
+  ws.onclose=function(){
+    document.getElementById('conn-dot').classList.remove('ok');
+    clearInterval(keepAliveTimer);
+    setTimeout(connect,2000);
+  };
+  ws.onerror=function(){ws.close();};
+}
+
+function sendChannels(us){
+  if(ws&&ws.readyState===1){
+    chUs=us.map(function(v){return Math.max(1000,Math.min(2000,Math.round(v)));});
+    ws.send(JSON.stringify({channels:chUs}));
+  }
+}
+
+function safeState(){
+  chUs=SAFE_US.slice();
+  if(ws&&ws.readyState===1)ws.send(JSON.stringify({safe:true}));
+  buildSliders();
+  renderWizardIntro();
+  wizardStep=-1;
+  selectedFn=null;
+}
+
+function showTab(name){
+  ['wizard-tab','manual-tab','results-tab'].forEach(function(id){
+    document.getElementById(id).style.display=(id===name+'-tab'?'':'none');
+  });
+  ['tab-wizard','tab-manual','tab-results'].forEach(function(id,i){
+    document.getElementById(id).classList.toggle('active',['wizard','manual','results'][i]===name);
+  });
+  if(name==='results'){renderResultsList();buildSaveSection();}
+}
+
+function renderDots(){
+  var dots=document.getElementById('step-dots');
+  dots.innerHTML='';
+  for(var i=0;i<CH_COUNT;i++){
+    var d=document.createElement('div');
+    d.className='dot'+(i<wizardStep?' done':i===wizardStep?' active':'');
+    dots.appendChild(d);
+  }
+}
+
+function renderWizardIntro(){
+  document.getElementById('step-label').textContent='Sissejuhatus';
+  renderDots();
+  document.getElementById('wizard-body').innerHTML=
+    '<div class="ch-test-box" style="border-color:#3fb950">'+
+    '<h2>Kanal Tuvastamine</h2>'+
+    '<div style="font-size:0.9rem;color:#8b949e;margin:12px 0 16px">'+
+    'Wizard testib kanaleid CH1-CH8 ukshaavalt.<br>'+
+    'Vaata <strong>INAV Receiver tab</strong> ja tle mis muutub.'+
+    '</div>'+
+    '<div style="background:#21262d;border-radius:8px;padding:12px;margin-bottom:16px;text-align:left;font-size:0.82rem;color:#8b949e">'+
+    '<strong style="color:#e6edf3">Enne alustamist:</strong><br>'+
+    'INAV Configurator avatud, Receiver tab<br>'+
+    'Droon toitega, USB uhendatud<br>'+
+    'ARA armi drooni testi ajal!'+
+    '</div></div>'+
+    '<button class="btn-next" onclick="startWizard()">Alusta</button>';
+}
+
+function startWizard(){
+  wizardStep=0;
+  stepResults={};
+  renderWizardStep();
+}
+
+function renderWizardStep(){
+  renderDots();
+  if(wizardStep>=CH_COUNT){renderWizardDone();return;}
+  var chIdx=wizardStep;
+  var chNum=chIdx+1;
+  var isThrottle=(chIdx===2);
+  var testUs=isThrottle?1300:1800;
+  var us=SAFE_US.slice();
+  us[chIdx]=testUs;
+  sendChannels(us);
+  document.getElementById('step-label').textContent='Samm '+chNum+'/'+CH_COUNT;
+  selectedFn=null;
+
+  var warn=isThrottle?'<div class="warn-box">CH3 testib 1300µs-ga (ohutu). Kui see on Throttle, mootorid ei kaivitu.</div>':'';
+  var html='<div class="ch-test-box">'+
+    '<h2>CH'+chNum+'</h2>'+
+    '<div class="us-val">'+testUs+' µs</div>'+
+    '<div class="hint">Koik teised: turvaline seisund</div>'+
+    '</div>'+warn+
+    '<div class="q-label">Mis muutus INAV Receiver tabis?</div>'+
+    '<div class="fn-grid" id="fn-grid"></div>'+
+    '<div class="nav-row">'+
+    '<button class="btn-back" onclick="prevStep()">Tagasi</button>'+
+    '<button class="btn-next" id="btn-next-step" onclick="nextStep()" disabled>Edasi</button>'+
+    '</div>';
+  document.getElementById('wizard-body').innerHTML=html;
+
+  var grid=document.getElementById('fn-grid');
+  FN_OPTIONS.forEach(function(fn){
+    var b=document.createElement('button');
+    b.className='fn-btn';
+    b.innerHTML='<span class="icon">'+fn.icon+'</span>'+fn.label;
+    b.onclick=(function(fid,btn){return function(){selectFn(fid,btn);};})(fn.id,b);
+    grid.appendChild(b);
+  });
+}
+
+function selectFn(fnId,btn){
+  selectedFn=fnId;
+  document.querySelectorAll('.fn-btn').forEach(function(b){b.classList.remove('selected');});
+  btn.classList.add('selected');
+  document.getElementById('btn-next-step').disabled=false;
+}
+
+function nextStep(){
+  if(selectedFn!==null&&selectedFn!=='skip'){
+    stepResults[wizardStep]=selectedFn;
+  }
+  wizardStep++;
+  selectedFn=null;
+  renderWizardStep();
+}
+
+function prevStep(){
+  if(wizardStep>0){
+    wizardStep--;
+    delete stepResults[wizardStep];
+    renderWizardStep();
+  } else {
+    renderWizardIntro();
+    wizardStep=-1;
+    safeState();
+  }
+}
+
+function renderWizardDone(){
+  safeState();
+  document.getElementById('step-label').textContent='Valmis!';
+  document.getElementById('wizard-body').innerHTML=
+    '<div class="ch-test-box" style="border-color:#3fb950">'+
+    '<h2>Test Valmis</h2>'+
+    '<div style="font-size:0.9rem;color:#8b949e;margin-top:8px">'+
+    'Kanalite kaardistus on tuvastatud.<br>Vaata tulemusi ja salvesta konfig.'+
+    '</div></div>'+
+    '<button class="btn-next" style="background:#238636" onclick="showTab(\'results\')">Vaata tulemusi</button>'+
+    '<div style="margin-top:10px">'+
+    '<button class="btn-back" style="width:100%" onclick="safeState()">Alusta uuesti</button>'+
+    '</div>';
+}
+
+function renderResultsList(){
+  var fnNames={roll:'Roll',pitch:'Pitch',throttle:'Throttle',yaw:'Yaw',arm:'Arm Switch',skip:'Vahele jaetud'};
+  var html='';
+  for(var i=0;i<CH_COUNT;i++){
+    var fn=stepResults[i]||'unknown';
+    var fnLabel=fnNames[fn]||'Tundmatu';
+    var testUs=(i===2)?1300:(fn==='arm'?2000:1800);
+    html+='<div class="result-row">'+
+      '<span class="result-ch">CH'+(i+1)+'</span>'+
+      '<span class="result-fn '+fn+'">'+fnLabel+'</span>'+
+      '<span class="result-us">'+testUs+'µs</span>'+
+      '</div>';
+  }
+  document.getElementById('results-list').innerHTML=html;
+}
+
+function buildSaveSection(){
+  var saveBox=document.getElementById('save-box');
+  saveBox.style.display='';
+  var order=[];
+  for(var i=0;i<4;i++){
+    var fn=stepResults[i];
+    if(fn==='roll')order.push('A');
+    else if(fn==='pitch')order.push('E');
+    else if(fn==='throttle')order.push('T');
+    else if(fn==='yaw')order.push('R');
+    else order.push('?');
+  }
+  var mapStr=order.join('');
+  var knownMaps={AETR:'AETR (standard Crossfire)',TAER:'TAER (Betaflight vaikimisi)',AERT:'AERT',TEAR:'TEAR'};
+  var mapName=knownMaps[mapStr]||('Kohandatud: '+mapStr);
+  var expectedOrder=['roll','pitch','throttle','yaw'];
+  var isCorrect=expectedOrder.every(function(fn,i){return stepResults[i]===fn;});
+  var infoHtml='<strong>Tuvastatud kanalite jarjekord: '+mapStr+'</strong><br>'+
+    'INAV vastab: <strong>'+mapName+'</strong><br><br>'+
+    'INAV-is kontrolli: Configurator - Receiver - Channel Map<br>'+
+    'Peaks olema: <strong>'+mapStr+'</strong><br><br>'+
+    (isCorrect?'Kanalite jarjekord klappib meie konfiguratsiooniga!':
+    'Kanalite jarjekord erineb - salvestame korrektse kaardistuse.');
+  document.getElementById('inav-info').innerHTML=infoHtml;
+}
+
+function saveConfig(){
+  var btn=document.getElementById('btn-save');
+  btn.disabled=true;
+  btn.textContent='Salvestamine...';
+  var mapping={};
+  Object.keys(stepResults).forEach(function(k){mapping[parseInt(k)]=stepResults[k];});
+  fetch('/api/test/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mapping:mapping})
+  }).then(function(r){
+    if(r.ok){btn.textContent='Salvestatud!';btn.style.background='#1a7f37';}
+    else{btn.textContent='Viga salvestamisel';btn.disabled=false;}
+  }).catch(function(e){btn.textContent='Viga: '+e.message;btn.disabled=false;});
+}
+
+var CH_LABELS=['CH1','CH2','CH3','CH4','CH5','CH6','CH7','CH8'];
+var FN_SHORT={roll:'Roll',pitch:'Pitch',throttle:'Throttle',yaw:'Yaw',arm:'Arm'};
+
+function buildSliders(){
+  var container=document.getElementById('sliders-container');
+  container.innerHTML='';
+  for(var i=0;i<CH_COUNT;i++){
+    var fn=stepResults[i]?(FN_SHORT[stepResults[i]]||''):'';
+    var div=document.createElement('div');
+    div.className='ch-slider';
+    div.innerHTML=
+      '<div class="ch-slider-header">'+
+      '<span class="ch-name">'+CH_LABELS[i]+'</span>'+
+      '<span class="ch-fn-badge">'+fn+'</span>'+
+      '<span class="ch-us-disp" id="disp-'+i+'">'+chUs[i]+' µs</span>'+
+      '</div>'+
+      '<input type="range" min="1000" max="2000" step="1" value="'+chUs[i]+'" id="slider-'+i+'" oninput="sliderChange('+i+',this.value)">'+
+      '<div class="ch-quick">'+
+      '<button onclick="setSlider('+i+',1000)">MIN 1000</button>'+
+      '<button onclick="setSlider('+i+',1500)">CTR 1500</button>'+
+      '<button onclick="setSlider('+i+',2000)">MAX 2000</button>'+
+      '</div>';
+    container.appendChild(div);
+  }
+}
+
+function sliderChange(idx,val){
+  val=parseInt(val);
+  document.getElementById('disp-'+idx).textContent=val+' µs';
+  var us=chUs.slice();
+  us[idx]=val;
+  sendChannels(us);
+}
+
+function setSlider(idx,val){
+  document.getElementById('slider-'+idx).value=val;
+  sliderChange(idx,val);
+}
+
+connect();
+buildSliders();
+renderWizardIntro();
+</script>
+</body>
+</html>

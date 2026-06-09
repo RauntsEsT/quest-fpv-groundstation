@@ -199,7 +199,7 @@ class CrossfireTX:
         self.device: Optional[DeviceInfo] = None
         self.params: dict[int, TxParam]   = {}
         self._serial: Optional[serial.Serial] = None
-        self._channels: tuple = (0.0,) * 16
+        self._channels: tuple = (0.0, 0.0, -1.0, 0.0) + (-1.0,) * 12  # throttle min, switches off
         self._buf          = bytearray()
         self._echo_pending = bytearray()   # bytes we sent, awaiting echo discard
         self._telem_feed   = None          # set by TelemetryManager to forward frames
@@ -449,15 +449,16 @@ class CrossfireTX:
 
     # ── Async main loop ────────────────────────────────────────────────────
 
-    async def start(self):
-        log.info(f"Crossfire TX starting on {self.port}")
+    async def start(self, handshake_only: bool = False):
+        log.info(f"Crossfire TX starting on {self.port}" + (" (handshake only)" if handshake_only else ""))
         # EdgeTX sends Model ID at startup — required to activate RF output
         self.send_model_id(0)
         self.ping()
         tick = 0
         while True:
-            # Send RC frame at 50 Hz
-            self._write(build_rc_frame(self._channels))
+            # In handshake_only mode (PPM input), skip RC frames — PPM provides channels
+            if not handshake_only:
+                self._write(build_rc_frame(self._channels))
             # Read incoming telemetry / param responses
             if self._serial:
                 self._drain_rx()

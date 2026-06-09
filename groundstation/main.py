@@ -43,13 +43,10 @@ async def main():
     if tx_type == "ppm":
         gpio_pin = tx_cfg.get("gpio_pin", 18)
         tx = PPMTransmitter(gpio_pin)
-        # CRSF handshake jookseb paralleelselt — saadab Model ID ja pingi
-        # et moodul saaks korralikult RF-i aktiveerida (EdgeTX protokoll)
-        crsf = CrossfireTX(tx_port, tx_baud)
-        log.info(f"TX: PPM GPIO{gpio_pin} + CRSF handshake {tx_port}@{tx_baud}")
+        # PPM moodi: EI kasuta CRSF/ttyAMA0 üldse — see sekkub mooduli PPM sisendiga
+        log.info(f"TX: PPM GPIO{gpio_pin} (puhas PPM, CRSF keelatud)")
     else:
         tx = CrossfireTX(tx_port, tx_baud)
-        crsf = tx  # sama objekt
         log.info(f"TX mode: CRSF on {tx_port}@{tx_baud}")
 
     video = VideoStreamer(VIDEO_DEVICE, VIDEO_PORT)
@@ -61,19 +58,14 @@ async def main():
     log.info(f"Quest FPV Ground Station — VRX:{cfg['vrx']['driver']} "
              f"TX:{tx_type} TELEM:{cfg['telemetry']['drivers']}")
 
-    tasks = [
+    await asyncio.gather(
         vrx.start(),
         tx.start(),
         ctrl.start(),
         video.start(),
         telem.start(),
         web_server.run(vrx, tx, video, telem, ctrl, port=WEB_PORT),
-    ]
-    # PPM moodi: lisa CRSF handshake eraldi taskina
-    if tx_type == "ppm":
-        tasks.append(crsf.start())
-
-    await asyncio.gather(*tasks)
+    )
 
 
 if __name__ == "__main__":
