@@ -85,6 +85,10 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
     async def get_tx_status():
         return tx.get_status()
 
+    @app.get("/api/tx/channels")
+    async def get_tx_channels():
+        return {"ch_us": tx._ch_us[:] if hasattr(tx, "_ch_us") else []}
+
     @app.get("/api/tx/jitter")
     async def get_tx_jitter():
         if hasattr(tx, 'get_jitter'):
@@ -233,7 +237,7 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
         return StreamingResponse(
             generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
-    SAFE_CH_US = [1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]
+    SAFE_CH_US = [1500, 1500, 1500, 1000, 1000, 1000, 1000, 1000]
 
     @app.post("/api/test/set")
     async def test_set_channels(request: Request):
@@ -294,7 +298,7 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
     async def websocket_test(ws: WebSocket):
         await ws.accept()
         log.info("Test WebSocket ühendatud")
-        SAFE = [1500, 1500, 1000, 1500, 1000, 1000, 1000, 1000]
+        SAFE = [1500, 1500, 1500, 1000, 1000, 1000, 1000, 1000]
         if hasattr(tx, "set_raw_us"):
             tx.set_raw_us(SAFE)
         try:
@@ -315,6 +319,61 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
             if hasattr(tx, "set_raw_us"):
                 tx.set_raw_us(SAFE)
             log.info("Test WebSocket lahutatud")
+
+
+    # ── Salvestamine ──────────────────────────────────────────────────────
+
+    @app.post("/api/record")
+    async def api_record(request: Request):
+        body = await request.json()
+        action = body.get("action", "")
+        if action == "start":
+            fname = video_streamer.start_recording()
+            return {"ok": True, "status": "recording", "filename": fname}
+        elif action == "stop":
+            result = video_streamer.stop_recording()
+            return result
+        elif action == "status":
+            return {
+                "recording": video_streamer.is_recording,
+                "duration": round(video_streamer.recording_duration, 1),
+                "filename": video_streamer._rec_filename if video_streamer.is_recording else ""
+            }
+        return {"ok": False, "error": "Tundmatu tegevus"}
+
+    @app.get("/api/recordings")
+    async def api_recordings():
+        return video_streamer.list_recordings()
+
+    @app.delete("/api/recordings/{filename}")
+    async def api_delete_recording(filename: str):
+        ok = video_streamer.delete_recording(filename)
+        return {"ok": ok}
+
+    @app.get("/recordings/{filename}")
+    async def serve_recording(filename: str):
+        import os
+        from fastapi.responses import FileResponse
+        from video_streamer import RECORDINGS_DIR
+        safe = os.path.basename(filename)
+        if not safe.startswith("rec_") or not safe.endswith(".avi"):
+            raise HTTPException(404)
+        fpath = os.path.join(RECORDINGS_DIR, safe)
+        if not os.path.exists(fpath):
+            raise HTTPException(404)
+        return FileResponse(fpath, media_type="video/x-msvideo",
+                           filename=safe,
+                           headers={"Content-Disposition": f"attachment; filename={safe}"})
+
+    @app.get("/app.apk")
+    async def serve_apk():
+        import os
+        from fastapi.responses import FileResponse
+        apk = "static/app.apk"
+        if not os.path.exists(apk):
+            raise HTTPException(404, detail="APK ei leitud. Ehita ja lae uuendus üles.")
+        return FileResponse(apk, media_type="application/vnd.android.package-archive",
+                           filename="quest-fpv.apk")
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
     return app

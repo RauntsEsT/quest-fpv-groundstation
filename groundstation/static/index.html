@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="et">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
@@ -8,14 +8,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
 <link rel="manifest" href="/static/manifest.json">
-<title>Quest FPV Ground Station</title>
+<title>Quest FPV</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;padding-bottom:60px}
-.nav{position:fixed;bottom:0;left:0;right:0;background:#161b22;border-top:1px solid #30363d;display:flex;z-index:100}
-.nav-btn{flex:1;padding:10px 4px 8px;background:none;border:none;color:#8b949e;font-size:0.65rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s}
-.nav-btn svg{width:20px;height:20px}
-.nav-btn.active{color:#58a6ff}
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;padding-top:44px;padding-bottom:0}
+body.fly-mode{overflow:hidden}
+#top-bar{position:fixed;top:0;left:0;right:0;height:44px;display:flex;align-items:center;padding:0 6px;gap:4px;background:rgba(13,17,23,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(48,54,61,0.5);z-index:100}
+#top-bar .hud-item{display:flex;align-items:center;gap:3px}
+#top-bar-spacer{flex:1}
+.topnav-btn{background:transparent;border:1px solid rgba(48,54,61,0.5);border-radius:6px;color:rgba(139,148,158,0.85);padding:4px 8px;font-size:0.7rem;cursor:pointer;touch-action:manipulation;white-space:nowrap;display:flex;align-items:center;gap:3px}
+.topnav-btn svg{width:14px;height:14px}
+.topnav-btn.active{color:#58a6ff;border-color:rgba(88,166,255,0.6);background:rgba(31,111,235,0.12)}
 .page{display:none;padding:12px}
 .page.active{display:block}
 h1{font-size:1rem;color:#58a6ff;margin-bottom:12px;display:flex;align-items:center;gap:8px}
@@ -70,79 +73,98 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 .toast.show{opacity:1}
 @media(min-width:600px){.g2{grid-template-columns:1fr 1fr 1fr}}
 /* FLY PAGE */
-#page-fly{padding:0;background:#0d1117;height:calc(100vh - 60px);display:none;flex-direction:column;user-select:none;-webkit-user-select:none}
+#page-fly{padding:0;background:#000;height:calc(100vh - 44px);display:none;flex-direction:column;user-select:none;-webkit-user-select:none}
 #page-fly.active{display:flex}
-.fly-hud{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#161b22;border-bottom:1px solid #30363d;gap:8px;flex-shrink:0}
+/* fly-hud merged into #top-bar */
 .hud-item{display:flex;flex-direction:column;align-items:center;gap:1px}
-.hud-label{font-size:0.6rem;color:#8b949e;text-transform:uppercase}
-.hud-val{font-size:0.9rem;font-weight:700;color:#58a6ff}
+.hud-label{font-size:0.58rem;color:rgba(139,148,158,0.8);text-transform:uppercase}
+.hud-val{font-size:0.85rem;font-weight:700;color:#58a6ff}
 .hud-val.good{color:#3fb950}.hud-val.warn{color:#d29922}.hud-val.bad{color:#f85149}
-.btn-arm{padding:8px 20px;border-radius:6px;border:none;font-size:0.85rem;font-weight:700;cursor:pointer;touch-action:manipulation}
-.btn-arm.disarmed{background:#3fb95033;color:#3fb950;border:1px solid #3fb950}
-.btn-arm.armed{background:#f8514933;color:#f85149;border:1px solid #f85149}
-.btn-fs{background:none;border:1px solid #30363d;border-radius:6px;color:#8b949e;padding:6px 10px;font-size:0.8rem;cursor:pointer;touch-action:manipulation}
+.btn-arm{padding:7px 16px;border-radius:6px;border:2px solid;font-size:0.82rem;font-weight:700;cursor:pointer;touch-action:manipulation}
+.btn-arm.disarmed{background:transparent;color:#3fb950;border-color:rgba(63,185,80,0.6)}
+.btn-arm.armed{background:rgba(248,81,73,0.15);color:#f85149;border-color:rgba(248,81,73,0.7)}
+.btn-rec{background:transparent;border:1px solid rgba(255,80,80,0.5);border-radius:6px;color:rgba(255,120,120,0.9);padding:4px 8px;font-size:0.7rem;cursor:pointer;touch-action:manipulation;font-weight:700}
+.btn-rec.recording{border-color:rgba(255,60,60,0.9);color:#ff4040;animation:recblink 1s step-end infinite}
+@keyframes recblink{50%{opacity:0.3}}
+.btn-fs{background:transparent;border:1px solid rgba(48,54,61,0.5);border-radius:6px;color:rgba(139,148,158,0.8);padding:4px 8px;font-size:0.78rem;cursor:pointer;touch-action:manipulation}
 .btn-fs:active{color:#58a6ff;border-color:#58a6ff}
-#fly-canvas{position:relative;flex:1;overflow:hidden;background:#000}
-#fpv-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;z-index:0;background:#000;transform-origin:center center;transition:transform .1s ease}
-#video-zoom-bar{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:10;background:#161b22cc;border:1px solid #30363d;border-radius:20px;padding:6px 14px;display:none;align-items:center;gap:10px;backdrop-filter:blur(4px)}
-#video-zoom-bar.visible{display:flex}
-.zoom-btn{background:none;border:none;color:#e6edf3;font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1}
-#zoom-label{font-size:0.78rem;color:#58a6ff;font-weight:700;min-width:38px;text-align:center}
-#zoom-slider{width:100px;accent-color:#58a6ff}
-.fit-btn{background:#21262d;border:1px solid #30363d;border-radius:12px;color:#8b949e;font-size:0.7rem;padding:3px 8px;cursor:pointer;white-space:nowrap}
-.fit-btn.active{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
-#zoom-sep{width:1px;height:20px;background:#30363d}
+#fly-canvas{position:relative;flex:1;overflow:hidden;background:#000;touch-action:none}
+#fpv-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;background:#000;transform-origin:center center;transition:transform .1s ease}
+/* video zoom bar removed — zoom set in Settings */
 .fly-widget{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;user-select:none;-webkit-user-select:none;touch-action:none;z-index:1}
 #fly-canvas.editing .fly-widget{outline:2px dashed #58a6ff55;border-radius:14px;padding:6px 8px;background:#58a6ff09;cursor:grab}
 .edit-handle{font-size:1rem;color:#58a6ff66;display:none;line-height:1;pointer-events:none;letter-spacing:1px}
 #fly-canvas.editing .edit-handle{display:block}
 #edit-save-bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;display:none;gap:8px;background:#161b22f0;padding:8px 14px;border-radius:20px;border:1px solid #30363d}
-.btn-edit-layout{padding:5px 10px;background:none;border:1px solid #30363d;border-radius:6px;color:#8b949e;font-size:0.75rem;cursor:pointer;touch-action:manipulation;line-height:1.4;white-space:nowrap}
-.btn-edit-layout.active{border-color:#58a6ff;color:#58a6ff;background:#1f6feb22}
-.stick-zone{position:relative;width:160px;height:160px;background:#161b22;border:1px solid #30363d;border-radius:50%;flex-shrink:0;touch-action:none;overflow:hidden}
-.stick-knob{position:absolute;width:56px;height:56px;background:#58a6ff;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);transition:background .2s;pointer-events:none}
-.stick-knob.active{background:#1f6feb}
+.btn-edit-layout{padding:4px 8px;background:transparent;border:1px solid rgba(139,148,158,0.4);border-radius:6px;color:rgba(139,148,158,0.8);font-size:0.7rem;cursor:pointer;touch-action:manipulation;white-space:nowrap}
+.btn-edit-layout.active{border-color:rgba(88,166,255,0.7);color:#58a6ff;background:rgba(31,111,235,0.18)}
+.stick-zone{position:relative;width:160px;height:160px;background:transparent;border:2px solid rgba(255,255,255,0.18);border-radius:50%;flex-shrink:0;touch-action:none;overflow:hidden}
+.stick-knob{position:absolute;width:56px;height:56px;background:rgba(88,166,255,0.4);border:2px solid rgba(88,166,255,0.65);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);transition:background .2s;pointer-events:none}
+.stick-knob.active{background:rgba(31,111,235,0.6);border-color:rgba(31,111,235,0.9)}
 .stick-cross{position:absolute;inset:0;pointer-events:none}
-.stick-cross::before,.stick-cross::after{content:'';position:absolute;background:#30363d}
+.stick-cross::before,.stick-cross::after{content:'';position:absolute;background:rgba(255,255,255,0.12)}
 .stick-cross::before{width:1px;height:100%;left:50%;top:0}
 .stick-cross::after{width:100%;height:1px;top:50%;left:0}
 .fly-widget .fly-aux{margin:0}
-.fly-aux{width:52px;height:52px;border-radius:50%;border:1px solid #30363d;background:#21262d;color:#8b949e;font-size:0.7rem;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
-.fly-aux.on{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
-.stick-label{text-align:center;font-size:0.62rem;color:#8b949e;margin-top:6px}
+.fly-aux{width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,0.28);background:transparent;color:rgba(255,255,255,0.75);font-size:0.68rem;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
+.fly-aux.on{background:rgba(31,111,235,0.28);border-color:rgba(88,166,255,0.85);color:#58a6ff}
+.stick-label{text-align:center;font-size:0.6rem;color:rgba(255,255,255,0.5);margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,0.8)}
+
+/* Settings dropdown menu */
+.settings-overlay{position:fixed;inset:0;z-index:97;display:none}
+.settings-overlay.open{display:block}
+.settings-menu{position:fixed;top:44px;left:0;right:0;background:#161b22;border-bottom:2px solid #30363d;z-index:99;max-height:0;overflow:hidden;transition:max-height .22s cubic-bezier(.4,0,.2,1)}
+.settings-menu.open{max-height:400px}
+.settings-menu-header{padding:10px 18px 6px;font-size:0.68rem;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #21262d}
+.settings-menu-item{display:flex;align-items:center;gap:14px;padding:13px 20px;color:#c9d1d9;border-bottom:1px solid #21262d;cursor:pointer;font-size:0.9rem;touch-action:manipulation}
+.settings-menu-item:active,.settings-menu-item.active-page{background:#1f6feb18;color:#58a6ff}
+.settings-menu-item svg{width:20px;height:20px;flex-shrink:0;color:#8b949e}
+.settings-menu-item.active-page svg{color:#58a6ff}
+
+.settings-video-card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.settings-video-card h3{margin:0 0 12px;font-size:0.82rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.08em}
+.settings-fit-btn{background:#21262d;border:1px solid #30363d;border-radius:10px;color:#8b949e;font-size:0.72rem;padding:5px 11px;cursor:pointer;white-space:nowrap;touch-action:manipulation}
+.settings-fit-btn.active{background:#1f6feb33;border-color:#58a6ff;color:#58a6ff}
+.zoom-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.zoom-row label{font-size:0.78rem;color:#e6edf3;min-width:40px}
+#settings-zoom-slider{flex:1;accent-color:#58a6ff}
+#settings-zoom-label{font-size:0.78rem;color:#58a6ff;font-weight:700;min-width:38px;text-align:right}
+.fit-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fit-row label{font-size:0.78rem;color:#e6edf3;min-width:40px}
+
+/* Recordings video player modal */
+#rec-player-modal{position:fixed;inset:0;z-index:200;background:#000d;display:none;flex-direction:column;align-items:center;justify-content:center}
+#rec-player-modal.open{display:flex}
+#rec-player-modal video{max-width:100%;max-height:calc(100vh - 80px);background:#000;border-radius:4px}
+#rec-player-close{position:absolute;top:10px;right:14px;background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer;line-height:1;z-index:201}
+#rec-player-title{color:#8b949e;font-size:0.78rem;margin-top:8px}
 </style>
 </head>
 <body>
 
-<div id="toast" class="toast">Salvestatud</div>
+<div id="toast" class="toast">Saved</div>
+
+<!-- GLOBAL TOP BAR -->
+<div id="top-bar">
+  <div class="hud-item"><span id="arm-hud-status" class="tag disarmed" style="font-size:0.68rem;padding:2px 6px">DISARMED</span></div>
+  <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">LQ</span><span class="hud-val" id="f-lq" style="font-size:0.78rem">—</span></div>
+  <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">ALT</span><span class="hud-val" id="f-alt" style="font-size:0.78rem">—</span></div>
+  <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">BATT</span><span class="hud-val" id="f-bat" style="font-size:0.78rem">—</span></div>
+  <div id="top-bar-spacer"></div>
+  <button class="topnav-btn" id="topnav-fly" onclick="showPage('fly',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Fly</button>
+  <button class="btn-rec" id="rec-btn" ontouchstart="toggleRec(event)" onclick="toggleRec(event)">&#9210; REC</button>
+  <button class="topnav-btn" id="topnav-rec" onclick="showPage('rec',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg></button>
+  <button class="topnav-btn" id="nav-settings-btn" onclick="toggleSettingsMenu(event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>Settings</button>
+  <button class="btn-edit-layout" id="edit-cancel-btn" ontouchstart="cancelEdit(event)" onclick="cancelEdit(event)" style="display:none;border-color:rgba(248,81,73,0.5);color:rgba(248,81,73,0.8)">&#10005;</button>
+  <button class="btn-edit-layout" id="edit-layout-btn" ontouchstart="toggleEditMode(event)" onclick="toggleEditMode(event)">&#9881; Edit</button>
+  <button class="btn-fs" onclick="toggleFullscreen()" id="fs-btn">⛶</button>
+</div>
 
 <!-- FLY -->
 <div id="page-fly" class="page">
-  <div class="fly-hud">
-    <div class="hud-item"><span class="hud-label">LQ</span><span class="hud-val" id="f-lq">—</span></div>
-    <div class="hud-item"><span class="hud-label">Kõrgus</span><span class="hud-val" id="f-alt">—</span></div>
-    <div class="hud-item">
-      <button class="btn-arm disarmed" id="arm-btn" ontouchstart="toggleArm(event)" onclick="toggleArm(event)">DISARMED</button>
-    </div>
-    <div class="hud-item"><span class="hud-label">Aku</span><span class="hud-val" id="f-bat">—</span></div>
-    <div class="hud-item"><span class="hud-label">Mode</span><span class="hud-val" id="f-mode">—</span></div>
-    <button class="btn-fs" onclick="toggleFullscreen()" id="fs-btn" title="Täisekraan">⛶</button>
-    <button class="btn-edit-layout" id="edit-layout-btn" ontouchstart="toggleEditMode(event)" onclick="toggleEditMode(event)">⚙ Muuda</button>
-  </div>
   <div id="fly-canvas">
     <img id="fpv-video" src="/video" alt="">
-    <div id="video-zoom-bar">
-      <button class="zoom-btn" onclick="setVideoZoom(videoZoom - 0.1)">−</button>
-      <input type="range" id="zoom-slider" min="50" max="300" value="100"
-             oninput="setVideoZoom(this.value/100)">
-      <span id="zoom-label">100%</span>
-      <button class="zoom-btn" onclick="setVideoZoom(videoZoom + 0.1)">+</button>
-      <button class="zoom-btn" onclick="setVideoZoom(1)" title="Reset">⌂</button>
-      <div id="zoom-sep"></div>
-      <button class="fit-btn active" id="fit-contain" onclick="setVideoFit('contain')">Mahub</button>
-      <button class="fit-btn" id="fit-cover" onclick="setVideoFit('cover')">Täidab</button>
-      <button class="fit-btn" id="fit-fill" onclick="setVideoFit('fill')">Venib</button>
-    </div>
+
     <div class="fly-widget" id="widget-stick-l">
       <div class="edit-handle">⠿⠿⠿</div>
       <div class="stick-zone" id="stick-l">
@@ -151,10 +173,16 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
       </div>
       <div class="stick-label">THR / YAW</div>
     </div>
-    <div class="fly-widget" id="widget-aux">
+    <div class="fly-widget" id="widget-mode">
       <div class="edit-handle">⠿⠿⠿</div>
       <button class="fly-aux" id="aux-ch6" ontouchstart="auxPress('ch6',event)" ontouchend="auxRelease('ch6',event)" onclick="auxClick('ch6')">MODE</button>
+    </div>
+    <div class="fly-widget" id="widget-aux3">
+      <div class="edit-handle">⠿⠿⠿</div>
       <button class="fly-aux" id="aux-ch7" ontouchstart="auxPress('ch7',event)" ontouchend="auxRelease('ch7',event)" onclick="auxClick('ch7')">AUX3</button>
+    </div>
+    <div class="fly-widget" id="widget-aux4">
+      <div class="edit-handle">⠿⠿⠿</div>
       <button class="fly-aux" id="aux-ch8" ontouchstart="auxPress('ch8',event)" ontouchend="auxRelease('ch8',event)" onclick="auxClick('ch8')">AUX4</button>
     </div>
     <div class="fly-widget" id="widget-stick-r">
@@ -165,20 +193,21 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
       </div>
       <div class="stick-label">PITCH / ROLL</div>
     </div>
-    <div id="edit-save-bar">
-      <button class="btn sec" style="padding:7px 16px;font-size:0.82rem" onclick="setEditMode(false)">Tühista</button>
-      <button class="btn" style="padding:7px 16px;font-size:0.82rem" onclick="saveLayout()">Salvesta</button>
+    <div class="fly-widget" id="widget-arm">
+      <div class="edit-handle">⠿⠿⠿</div>
+      <button class="btn-arm disarmed" id="arm-btn" ontouchstart="toggleArm(event)" onclick="toggleArm(event)">DISARMED</button>
     </div>
+    <div id="edit-save-bar" style="display:none!important"></div>
   </div>
 </div>
 
 <!-- DASHBOARD -->
-<div id="page-dash" class="page active">
+<div id="page-dash" class="page active"><!-- dashboard: settings btn marked active via JS -->
 <h1><span class="dot off" id="dot"></span>Quest FPV Ground Station</h1>
 <div class="g2">
   <div class="card">
     <h2>Video Receiver</h2>
-    <div class="row"><span>Sagedus</span><span class="val" id="d-freq">—</span></div>
+    <div class="row"><span>Frequency</span><span class="val" id="d-freq">—</span></div>
     <div class="row"><span>RSSI A</span><span class="val" id="d-rssi-a">—</span></div>
     <div class="bar-wrap"><div class="bar" id="d-bar-a" style="width:0"></div></div>
     <div class="row"><span>RSSI B</span><span class="val" id="d-rssi-b">—</span></div>
@@ -195,21 +224,21 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
   </div>
 </div>
 <div class="card">
-  <h2>Telemeetria</h2>
+  <h2>Telemetry</h2>
   <div class="g2">
     <div>
-      <div class="row"><span>Staatus</span><span id="d-arm" class="tag disarmed">DISARMED</span></div>
+      <div class="row"><span>Status</span><span id="d-arm" class="tag disarmed">DISARMED</span></div>
       <div class="row"><span>Mode</span><span class="val" id="d-mode">—</span></div>
-      <div class="row"><span>Kõrgus</span><span class="val" id="d-alt">—</span></div>
-      <div class="row"><span>Kiirus</span><span class="val" id="d-spd">—</span></div>
-      <div class="row"><span>V-kiirus</span><span class="val" id="d-vspd">—</span></div>
+      <div class="row"><span>Alt</span><span class="val" id="d-alt">—</span></div>
+      <div class="row"><span>Speed</span><span class="val" id="d-spd">—</span></div>
+      <div class="row"><span>V-Speed</span><span class="val" id="d-vspd">—</span></div>
     </div>
     <div>
-      <div class="row"><span>GPS fix</span><span class="val" id="d-gps">—</span></div>
-      <div class="row"><span>Kodu dist</span><span class="val" id="d-dist">—</span></div>
-      <div class="row"><span>Pinge</span><span class="val" id="d-volt">—</span></div>
-      <div class="row"><span>Vool</span><span class="val" id="d-curr">—</span></div>
-      <div class="row"><span>Aku</span><span class="val" id="d-bat">—</span></div>
+      <div class="row"><span>GPS Fix</span><span class="val" id="d-gps">—</span></div>
+      <div class="row"><span>Home Dist</span><span class="val" id="d-dist">—</span></div>
+      <div class="row"><span>Voltage</span><span class="val" id="d-volt">—</span></div>
+      <div class="row"><span>Current</span><span class="val" id="d-curr">—</span></div>
+      <div class="row"><span>Batt</span><span class="val" id="d-bat">—</span></div>
     </div>
   </div>
 </div>
@@ -217,13 +246,28 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 
 <!-- VRX -->
 <div id="page-vrx" class="page">
+  <div class="settings-video-card" id="video-display-card">
+    <h3>Video Display</h3>
+    <div class="zoom-row">
+      <label>Zoom</label>
+      <input type="range" id="settings-zoom-slider" min="50" max="300" value="100"
+             oninput="setVideoZoom(this.value/100)" ontouchstart="this.ontouchmove=function(ev){ev.preventDefault();setVideoZoom(this.value/100)}">
+      <span id="settings-zoom-label">100%</span>
+    </div>
+    <div class="fit-row">
+      <label>Fit</label>
+      <button class="settings-fit-btn active" data-fit="contain" ontouchstart="setVideoFit('contain');event.preventDefault()" onclick="setVideoFit('contain')">Fit</button>
+      <button class="settings-fit-btn" data-fit="cover" ontouchstart="setVideoFit('cover');event.preventDefault()" onclick="setVideoFit('cover')">Cover</button>
+      <button class="settings-fit-btn" data-fit="fill" ontouchstart="setVideoFit('fill');event.preventDefault()" onclick="setVideoFit('fill')">Stretch</button>
+    </div>
+  </div>
 <h1>Video Receiver</h1>
 <div class="card">
-  <h2>Draiver</h2>
+  <h2>Driver</h2>
   <div class="form-row">
-    <label>VRX tüüp</label>
+    <label>VRX Type</label>
     <select id="vrx-driver" onchange="toggleVrxUart()">
-      <option value="dummy">Dummy (testimine)</option>
+      <option value="dummy">Dummy (testing)</option>
       <option value="button">Button emulation (GPIO transistorid)</option>
       <option value="rtc6715">RTC6715 SPI (analoog, automaatne)</option>
       <option value="foxeer_uart">Foxeer Wildfire UART</option>
@@ -236,23 +280,23 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
     <div class="form-row"><label>Port</label><input type="text" id="vrx-port" value="/dev/ttyAMA3"></div>
     <div class="form-row"><label>Baud</label><input type="number" id="vrx-baud" value="115200"></div>
   </div>
-  <button class="btn" onclick="saveVrxCfg()">Salvesta ja rakenda</button>
+  <button class="btn" onclick="saveVrxCfg()">Save & Apply</button>
 </div>
 <div class="card">
-  <h2>Kanalivalik — 5.8 GHz</h2>
+  <h2>Channel Select — 5.8 GHz</h2>
   <div id="ch-selector-58"></div>
 </div>
 <div class="card">
-  <h2>Kanalivalik — 1.2 GHz</h2>
+  <h2>Channel Select — 1.2 GHz</h2>
   <div id="ch-selector-12"></div>
 </div>
 </div>
 
 <!-- TELEMETRY -->
 <div id="page-telem" class="page">
-<h1>Telemeetria</h1>
+<h1>Telemetry</h1>
 <div class="card">
-  <h2>Protokollid (vali aktiivsed)</h2>
+  <h2>Protocols (select active)</h2>
   <div class="chips" id="telem-chips">
     <div class="chip" data-proto="mavlink" onclick="toggleProto(this)">MAVLink<br><small>ArduPilot/PX4</small></div>
     <div class="chip" data-proto="msp" onclick="toggleProto(this)">MSP<br><small>Betaflight/iNav</small></div>
@@ -260,71 +304,88 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
     <div class="chip" data-proto="smartport" onclick="toggleProto(this)">SmartPort<br><small>FrSky</small></div>
     <div class="chip" data-proto="ltm" onclick="toggleProto(this)">LTM<br><small>iNav lightweight</small></div>
     <div class="chip" data-proto="hott" onclick="toggleProto(this)">HoTT<br><small>Graupner</small></div>
-    <div class="chip active" data-proto="dummy" onclick="toggleProto(this)">Dummy<br><small>Testimine</small></div>
+    <div class="chip active" data-proto="dummy" onclick="toggleProto(this)">Dummy<br><small>Testing</small></div>
   </div>
 </div>
 <div class="card">
-  <h2>UART seadistus</h2>
-  <div class="form-row"><label>UART port (FC telemetry)</label><input type="text" id="telem-port" value="/dev/ttyAMA4" oninput="localStorage.setItem('fpv_telem_port',this.value)"></div>
+  <h2>UART Settings</h2>
+  <div class="form-row"><label>UART Port (FC telemetry)</label><input type="text" id="telem-port" value="/dev/ttyAMA4" oninput="localStorage.setItem('fpv_telem_port',this.value)"></div>
   <div id="telem-bauds"></div>
-  <button class="btn" onclick="saveTelemCfg()">Salvesta ja rakenda</button>
+  <button class="btn" onclick="saveTelemCfg()">Save & Apply</button>
 </div>
 <div class="card">
-  <h2>Live andmed</h2>
+  <h2>Live Data</h2>
   <div class="telem-grid" id="telem-live"></div>
 </div>
 </div>
 
 <!-- CONTROLLER -->
 <div id="page-ctrl" class="page">
-<h1>Kontroller</h1>
+<h1>Controller</h1>
 <div class="card">
-  <h2>Telgede seadistus</h2>
+  <h2>Axis Config</h2>
   <table class="ax-table">
-    <thead><tr><th>Kanal</th><th>Allikas</th><th>Inv</th><th>Expo</th><th>Rate</th></tr></thead>
+    <thead><tr><th>Channel</th><th>Source</th><th>Inv</th><th>Expo</th><th>Rate</th></tr></thead>
     <tbody id="ax-rows"></tbody>
   </table>
 </div>
 <div class="card">
   <h2>Dead Zone</h2>
   <div class="range-row">
-    <label>Dead zone <span id="dz-val">5%</span></label>
+    <label>Dead Zone <span id="dz-val">5%</span></label>
     <input type="range" id="dz" min="0" max="30" value="5" oninput="document.getElementById('dz-val').textContent=this.value+'%'">
   </div>
 </div>
 <div class="card">
-  <h2>Nuppude seadistus</h2>
+  <h2>Button Config</h2>
   <table class="ax-table">
-    <thead><tr><th>Kanal</th><th>Nupp</th><th>Režiim</th><th>ON</th><th>OFF</th></tr></thead>
+    <thead><tr><th>Channel</th><th>Button</th><th>Mode</th><th>ON</th><th>OFF</th></tr></thead>
     <tbody id="btn-rows"></tbody>
   </table>
 </div>
 <div class="card">
-  <h2>Failsafe väärtused</h2>
+  <h2>Failsafe Values</h2>
   <div class="g2" id="fs-rows"></div>
 </div>
 <div class="btn-row">
-  <button class="btn" onclick="saveCtrCfg()">Salvesta</button>
-  <button class="btn sec" onclick="loadCfg()">Taasta</button>
+  <button class="btn" onclick="saveCtrCfg()">Save</button>
+  <button class="btn sec" onclick="loadCfg()">Reset</button>
 </div>
 <div class="card" style="margin-top:12px">
-  <h2>Live kanalid</h2>
+  <h2>Live Channels</h2>
   <div id="ch-live-grid"></div>
 </div>
 </div>
 
-<!-- TX MOODUL -->
+<!-- SALVESTISED -->
+<div id="page-rec" class="page">
+<h1>Recordings</h1>
+<div class="card" style="margin-bottom:8px">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <span style="color:#8b949e;font-size:0.85rem" id="rec-storage-info">Loading...</span>
+    <button class="btn sec" style="padding:5px 12px;font-size:0.8rem" onclick="loadRecordings()">&#8635; Uuenda</button>
+  </div>
+</div>
+<div id="rec-list"><div class="card" style="text-align:center;color:#8b949e;padding:24px">No recordings</div></div>
+<div class="card" style="margin-top:12px;border-color:rgba(88,166,255,0.3)">
+  <h2>App Update</h2>
+  <p style="color:#8b949e;font-size:0.85rem;margin:0 0 10px">Download the latest version when available.</p>
+  <a href="/app.apk" class="btn" style="display:inline-block;text-decoration:none;padding:7px 18px;font-size:0.85rem">&#11015; Download APK Update</a>
+</div>
+</div>
+
+<!-- TX MODULE -->
 <div id="page-tx" class="page">
-<h1>TX Moodul</h1>
+<h1>TX Module</h1>
 
 <div class="g2">
   <!-- RC Sisend -->
   <div class="card">
-    <h2>RC Sisend</h2>
-    <div class="row"><span>Olek</span><span class="val good" id="tx-rc-input">—</span></div>
-    <div class="row"><span>Režiim</span><span class="val" id="tx-mode">PPM</span></div>
+    <h2>RC Input</h2>
+    <div class="row"><span>Status</span><span class="val good" id="tx-rc-input">—</span></div>
+    <div class="row"><span>Mode</span><span class="val" id="tx-mode">PPM</span></div>
     <div class="row"><span>GPIO</span><span class="val" id="tx-gpio">18 (pin 12)</span></div>
-    <div class="row"><span>Seade</span><span class="val" id="tx-device">XF microTX</span></div>
+    <div class="row"><span>Device</span><span class="val" id="tx-device">XF microTX</span></div>
   </div>
 
   <!-- RF Link -->
@@ -341,16 +402,16 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 
 <!-- Kanalid -->
 <div class="card">
-  <h2>PPM Kanalid</h2>
+  <h2>PPM Channels</h2>
   <div id="tx-ch-grid"></div>
 </div>
 
 <!-- Seaded -->
 <div class="card">
-  <h2>TX Seaded</h2>
+  <h2>TX Settings</h2>
   <div class="g2">
     <div class="form-row">
-      <label>Võimsus (max)</label>
+      <label>Power (max)</label>
       <select id="tx-pwr-sel" onchange="txSetParam('power',this.value);localStorage.setItem('fpv_tx_power',this.value)">
         <option value="0">10 mW</option>
         <option value="1">25 mW</option>
@@ -375,22 +436,22 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
       </select>
     </div>
     <div class="form-row">
-      <label>Telemetria</label>
+      <label>Telemetry</label>
       <select id="tx-telem-sel" onchange="txSetParam('telem',this.value);localStorage.setItem('fpv_tx_telem',this.value)">
         <option value="1" selected>On</option>
         <option value="0">Off</option>
       </select>
     </div>
   </div>
-  <div style="font-size:0.72rem;color:#8b949e;margin-top:8px">Seaded rakenduvad CRSF ühenduse kaudu (tulevikus automaatne)</div>
+  <div style="font-size:0.72rem;color:#8b949e;margin-top:8px">Settings apply via CRSF connection (automatic in future)</div>
 </div>
 
 <!-- Toimingud -->
 <div class="card">
-  <h2>Toimingud</h2>
+  <h2>Actions</h2>
   <div class="btn-row">
-    <button class="btn" onclick="txBind()">🔗 Bind drooniga</button>
-    <button class="btn sec" onclick="txScan()">↻ Loe seaded</button>
+    <button class="btn" onclick="txBind()">🔗 Bind to Drone</button>
+    <button class="btn sec" onclick="txScan()">↻ Read Config</button>
     <button class="btn sec" onclick="txPing()">⚡ Ping</button>
   </div>
   <div id="tx-action-msg" style="font-size:0.8rem;color:#3fb950;margin-top:8px;display:none"></div>
@@ -398,32 +459,32 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 
 <!-- TX parameetrid (CRSF) -->
 <div class="card" id="tx-params-card" style="display:none">
-  <h2>CRSF Parameetrid</h2>
+  <h2>CRSF Parameters</h2>
   <div id="tx-params-list"></div>
 </div>
 </div>
 
-<!-- BOTTOM NAV -->
-<nav class="nav">
-  <button class="nav-btn" onclick="showPage('fly',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Lend
-  </button>
-  <button class="nav-btn active" onclick="showPage('dash',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Info
-  </button>
-  <button class="nav-btn" onclick="showPage('tx',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>TX
-  </button>
-  <button class="nav-btn" onclick="showPage('vrx',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12a10 10 0 0 1 20 0"/><path d="M6 12a6 6 0 0 1 12 0"/></svg>VRX
-  </button>
-  <button class="nav-btn" onclick="showPage('telem',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Telemeetria
-  </button>
-  <button class="nav-btn" onclick="showPage('ctrl',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><rect x="2" y="7" width="20" height="10" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>Kontroller
-  </button>
-</nav>
+<!-- SETTINGS MENU -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettingsMenu()"></div>
+<div class="settings-menu" id="settings-menu">
+  <div class="settings-menu-header">Menu</div>
+  <div class="settings-menu-item" id="smenu-dash" onclick="showPage('dash',null)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+  </div>
+  <div class="settings-menu-item" id="smenu-tx" onclick="showPage('tx',null)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>TX Module
+  </div>
+  <div class="settings-menu-item" id="smenu-vrx" onclick="showPage('vrx',null)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12a10 10 0 0 1 20 0"/><path d="M6 12a6 6 0 0 1 12 0"/></svg>Video Receiver
+  </div>
+  <div class="settings-menu-item" id="smenu-telem" onclick="showPage('telem',null)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Telemetry
+  </div>
+  <div class="settings-menu-item" id="smenu-ctrl" onclick="showPage('ctrl',null)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><rect x="2" y="7" width="20" height="10" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>Controller
+  </div>
+</div>
+
+<!-- bottom nav removed, navigation in #top-bar -->
 
 <script>
 const BANDS_58={A:[5865,5845,5825,5805,5785,5765,5745,5725],B:[5733,5752,5771,5790,5809,5828,5847,5866],E:[5705,5685,5665,5645,5885,5905,5925,5945],F:[5740,5760,5780,5800,5820,5840,5860,5880],R:[5658,5695,5732,5769,5806,5843,5880,5917]};
@@ -436,26 +497,65 @@ const BTNS_INFO={ch5:'CH5 (AUX1/ARM)',ch6:'CH6 (AUX2/Mode)',ch7:'CH7 (AUX3)',ch8
 const BAUD_MAP={mavlink:57600,msp:115200,ltm:2400,smartport:57600,hott:19200};
 let cfg=null, activeBand='F', activeCh=2, activeProtos=new Set(['dummy']);
 
-function showPage(id,btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  btn.classList.add('active');
+const SETTINGS_PAGES = ['tx','vrx','telem','ctrl','dash'];
+
+function showPage(id, btn) {
+  if (id === 'rec') loadRecordings();
+  closeSettingsMenu();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.topnav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.settings-menu-item').forEach(b => b.classList.remove('active-page'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (SETTINGS_PAGES.includes(id)) {
+    const sb = document.getElementById('nav-settings-btn');
+    if (sb) sb.classList.add('active');
+    const sm = document.getElementById('smenu-' + id);
+    if (sm) sm.classList.add('active-page');
+  } else if (id === 'fly') {
+    const fb = document.getElementById('topnav-fly');
+    if (fb) fb.classList.add('active');
+  } else if (id === 'rec') {
+    const rb = document.getElementById('topnav-rec');
+    if (rb) rb.classList.add('active');
+  } else if (btn) {
+    btn.classList.add('active');
+  }
   localStorage.setItem('fpv_tab', id);
   flyTabActive = (id === 'fly');
+  document.body.classList.toggle('fly-mode', flyTabActive);
   if (!flyTabActive) {
-    // Lahkumisel peata saatmine ja nulli stikid
     if (ctrlInterval) { clearInterval(ctrlInterval); ctrlInterval = null; }
     axes = {lx:0, ly:0, rx:0, ry:0};
     buttons = {ch5:false, ch6:false, ch7:false, ch8:false};
     stickResets.forEach(fn => fn());
   } else {
-    // Lennu-lehele sisenemisel alusta saatmine
     if (ctrlWs && ctrlWs.readyState === 1 && !ctrlInterval)
       ctrlInterval = setInterval(sendControl, 40);
     else if (!ctrlWs || ctrlWs.readyState > 1)
       connectCtrlWS();
   }
+}
+
+function toggleSettingsMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('settings-menu');
+  const overlay = document.getElementById('settings-overlay');
+  const isOpen = menu.classList.contains('open');
+  if (isOpen) {
+    closeSettingsMenu();
+  } else {
+    menu.classList.add('open');
+    overlay.classList.add('open');
+    document.getElementById('nav-settings-btn').classList.add('active');
+  }
+}
+
+function closeSettingsMenu() {
+  document.getElementById('settings-menu').classList.remove('open');
+  document.getElementById('settings-overlay').classList.remove('open');
+  const settingsBtn = document.getElementById('nav-settings-btn');
+  if (settingsBtn && !SETTINGS_PAGES.includes(localStorage.getItem('fpv_tab')))
+    settingsBtn.classList.remove('active');
 }
 
 function toast(msg,ok=true){
@@ -823,6 +923,26 @@ function setupStick(zoneId, knobId, axX, axY, springY) {
   document.addEventListener('mouseup', () => { if (dragging) { dragging = false; release(); } });
 }
 
+// Blokeeri pinch-zoom fly lehel — ainult multi-touch (scrollimist ei aeglusta)
+document.addEventListener('touchmove', function(e) {
+  if (e.touches.length > 1 && flyTabActive) e.preventDefault();
+}, { passive: false });
+// iOS Safari gesturestart/change events
+document.addEventListener('gesturestart', function(e) {
+  if (flyTabActive) e.preventDefault();
+}, { passive: false });
+document.addEventListener('gesturechange', function(e) {
+  if (flyTabActive) e.preventDefault();
+}, { passive: false });
+// fly-canvas otsene kaitse (rakendatakse pärast DOMContentLoaded)
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.getElementById('fly-canvas');
+  if (canvas) {
+    canvas.addEventListener('touchstart', function(e) {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  }
+});
 // Left: throttle=ly (no spring), yaw=lx (spring)
 setupStick('stick-l','knob-l','lx','ly', false);
 // Right: pitch=ry (spring), roll=rx (spring)
@@ -837,13 +957,30 @@ function toggleArm(e) {
   const btn = document.getElementById('arm-btn');
   btn.textContent = armed ? 'ARMED' : 'DISARMED';
   btn.className = 'btn-arm ' + (armed ? 'armed' : 'disarmed');
+  const hud = document.getElementById('arm-hud-status');
+  if (hud) { hud.textContent = armed ? 'ARMED' : 'DISARMED'; hud.className = 'tag ' + (armed ? 'armed' : 'disarmed'); }
 }
 
-// AUX buttons
+// AUX buttons — toggle käitumine
 const auxState = {ch6:false, ch7:false, ch8:false};
-function auxPress(ch, e) { if (editMode) return; e.preventDefault(); auxState[ch]=true; document.getElementById('aux-'+ch).classList.add('on'); }
-function auxRelease(ch, e) { if (editMode) return; e.preventDefault(); auxState[ch]=false; document.getElementById('aux-'+ch).classList.remove('on'); }
-function auxClick(ch) { if (editMode) return; auxState[ch]=!auxState[ch]; document.getElementById('aux-'+ch).classList.toggle('on', auxState[ch]); }
+const _auxLastTouch = {};
+function auxPress(ch, e) {
+  if (editMode) return;
+  e.preventDefault(); // blokeeri scroll, ei muuda state
+}
+function auxRelease(ch, e) {
+  if (editMode) return;
+  e.preventDefault();
+  _auxLastTouch[ch] = Date.now();
+  auxState[ch] = !auxState[ch];
+  document.getElementById('aux-'+ch).classList.toggle('on', auxState[ch]);
+}
+function auxClick(ch) {
+  if (editMode) return;
+  if ((Date.now() - (_auxLastTouch[ch] || 0)) < 400) return; // hoia topelttoggle ära
+  auxState[ch] = !auxState[ch];
+  document.getElementById('aux-'+ch).classList.toggle('on', auxState[ch]);
+}
 
 // Control WebSocket
 function connectCtrlWS() {
@@ -927,11 +1064,14 @@ connectWS = function() {
 connectWS();
 
 // ── LAYOUT EDITOR ──────────────────────────────────────────
-const WIDGET_IDS = ['widget-stick-l', 'widget-stick-r', 'widget-aux'];
+const WIDGET_IDS = ['widget-stick-l', 'widget-stick-r', 'widget-mode', 'widget-aux3', 'widget-aux4', 'widget-arm'];
 const DEFAULT_LAYOUT_PCT = {
-  'widget-stick-l': {xp: 3,  yp: 56},
-  'widget-stick-r': {xp: 57, yp: 56},
-  'widget-aux':     {xp: 43, yp: 12},
+  'widget-stick-l': {xp: 2,  yp: 52},
+  'widget-stick-r': {xp: 62, yp: 52},
+  'widget-mode':    {xp: 36, yp: 12},
+  'widget-aux3':    {xp: 47, yp: 12},
+  'widget-aux4':    {xp: 58, yp: 12},
+  'widget-arm':     {xp: 42, yp: 70},
 };
 let flyLayout = {};
 
@@ -969,22 +1109,34 @@ function saveLayout() {
   });
   localStorage.setItem('fly_layout', JSON.stringify(flyLayout));
   setEditMode(false);
-  toast('Paigutus salvestatud');
+  toast('Layout saved');
 }
 
 function toggleEditMode(e) {
   e.preventDefault();
-  setEditMode(!editMode);
+  if (editMode) {
+    saveLayout();
+  } else {
+    setEditMode(true);
+  }
+}
+
+function cancelEdit(e) {
+  if (e) e.preventDefault();
+  setEditMode(false);
+  toast("Cancelled", false);
 }
 
 function setEditMode(val) {
   editMode = val;
   document.getElementById('fly-canvas').classList.toggle('editing', val);
-  document.getElementById('edit-save-bar').style.display = val ? 'flex' : 'none';
-  const zoomBar = document.getElementById('video-zoom-bar');
-  if (zoomBar) zoomBar.classList.toggle('visible', val);
   const btn = document.getElementById('edit-layout-btn');
-  if (btn) btn.classList.toggle('active', val);
+  if (btn) {
+    btn.classList.toggle('active', val);
+    btn.innerHTML = val ? '&#10003; Save' : '&#9881; Edit';
+  }
+  const cancelBtn = document.getElementById('edit-cancel-btn');
+  if (cancelBtn) cancelBtn.style.display = val ? '' : 'none';
   if (val) stickResets.forEach(fn => fn());
 }
 
@@ -1044,21 +1196,35 @@ function setupWidgetDrag(widgetId) {
   document.addEventListener('mouseup', () => { if (_drag) { _drag = false; onEnd(); } });
 }
 
+// Kui vana layout sisaldab widget-aux (jagati 3-ks), reset
+(function(){
+  try {
+    const s = localStorage.getItem('fly_layout');
+    if (s) {
+      const l = JSON.parse(s);
+      if ('widget-aux' in l || !('widget-mode' in l)) {
+        localStorage.removeItem('fly_layout');
+      }
+    }
+  } catch(e) {}
+})();
 WIDGET_IDS.forEach(setupWidgetDrag);
 loadFlyLayout();
 
 // ── Video zoom ───────────────────────────────────────────────────────────
 let videoZoom = parseFloat(localStorage.getItem('fpv_video_zoom') || '1');
 
+// Zoom only changeable from Settings — apply saved value to video element
 function setVideoZoom(z) {
   videoZoom = Math.max(0.5, Math.min(3.0, parseFloat(z)));
   const vid = document.getElementById('fpv-video');
-  const lbl = document.getElementById('zoom-label');
-  const sld = document.getElementById('zoom-slider');
-  if (vid) vid.style.transform = `scale(${videoZoom})`;
-  if (lbl) lbl.textContent = Math.round(videoZoom * 100) + '%';
-  if (sld) sld.value = Math.round(videoZoom * 100);
+  if (vid) vid.style.transform = videoZoom === 1 ? '' : `scale(${videoZoom})`;
   localStorage.setItem('fpv_video_zoom', videoZoom);
+  // update settings sliders if open
+  const sld = document.getElementById('settings-zoom-slider');
+  const lbl = document.getElementById('settings-zoom-label');
+  if (sld) sld.value = Math.round(videoZoom * 100);
+  if (lbl) lbl.textContent = Math.round(videoZoom * 100) + '%';
 }
 
 // Scroll wheel zoom
@@ -1088,22 +1254,30 @@ document.addEventListener('wheel', e => {
 })();
 
 // Video fit mode
-let videoFit = localStorage.getItem('fpv_video_fit') || 'contain';
+let videoFit = localStorage.getItem('fpv_video_fit') || 'cover';
 
 function setVideoFit(mode) {
   videoFit = mode;
   const vid = document.getElementById('fpv-video');
   if (vid) vid.style.objectFit = mode;
-  ['contain','cover','fill'].forEach(m => {
-    const b = document.getElementById('fit-'+m);
-    if (b) b.classList.toggle('active', m === mode);
-  });
+  document.querySelectorAll('.settings-fit-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.fit === mode));
   localStorage.setItem('fpv_video_fit', mode);
 }
 
 // Taasta salvestatud zoom ja fit
 document.addEventListener('DOMContentLoaded', () => {
   setVideoZoom(videoZoom);
+  // Init settings video UI
+  (function(){
+    const sld = document.getElementById('settings-zoom-slider');
+    const lbl = document.getElementById('settings-zoom-label');
+    if (sld) sld.value = Math.round(videoZoom * 100);
+    if (lbl) lbl.textContent = Math.round(videoZoom * 100) + '%';
+    document.querySelectorAll('.settings-fit-btn').forEach(b => b.classList.remove('active'));
+    const active = document.querySelector('.settings-fit-btn[data-fit="' + videoFit + '"]');
+    if (active) active.classList.add('active');
+  })();
   setVideoFit(videoFit);
 });
 
@@ -1200,7 +1374,7 @@ async function txBind() {
     const r = await fetch('/api/tx/bind', {method:'POST'});
     const j = await r.json();
     if (msg) { msg.style.display='block'; msg.textContent='✓ Bind käsk saadetud — pane droon bind moodi!'; setTimeout(()=>msg.style.display='none', 4000); }
-  } catch(e) { if (msg) { msg.style.display='block'; msg.style.color='#f85149'; msg.textContent='Viga: '+e.message; } }
+  } catch(e) { if (msg) { msg.style.display='block'; msg.style.color='#f85149'; msg.textContent='Error: '+e.message; } }
 }
 
 async function txScan() {
@@ -1213,7 +1387,7 @@ async function txScan() {
     const params = await r.json();
     renderTxParams(params);
     if (msg) { msg.textContent = params.length ? `✓ ${params.length} parameetrit loetud` : 'Parameetreid ei saadud (CRSF pole ühendatud)'; setTimeout(()=>msg.style.display='none', 3000); }
-  } catch(e) { if (msg) { msg.style.color='#f85149'; msg.textContent='Viga: '+e.message; } }
+  } catch(e) { if (msg) { msg.style.color='#f85149'; msg.textContent='Error: '+e.message; } }
 }
 
 async function txPing() {
@@ -1245,11 +1419,16 @@ function txSetParam(type, value) {
 // ── localStorage taastamine ───────────────────────────────────────────────
 function restoreState() {
   // Taasta viimane tab
+  // Mark Settings btn active (dashboard is default page under Settings)
+  const _sb = document.getElementById('nav-settings-btn');
+  if (_sb) _sb.classList.add('active');
   const lastTab = localStorage.getItem('fpv_tab');
   if (lastTab) {
     const btn = document.querySelector(`.nav-btn[onclick*="'${lastTab}'"]`);
     if (btn) showPage(lastTab, btn);
   }
+  // Algne fly-mode seisund
+  document.body.classList.toggle('fly-mode', flyTabActive);
 
   // Taasta TX seaded
   const txMap = {
@@ -1294,6 +1473,105 @@ if (typeof ws !== 'undefined') {
     } catch(_) {}
   });
 }
+
+// ── Salvestamine ──────────────────────────────────────────────────────
+let _recActive = false;
+let _recTimer = null;
+let _recSecs = 0;
+
+async function toggleRec(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('rec-btn');
+  if (_recActive) {
+    const r = await fetch('/api/record', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'stop'})});
+    const d = await r.json();
+    _recActive = false;
+    clearInterval(_recTimer);
+    btn.classList.remove('recording');
+    btn.textContent = '⏺ REC';
+    showToast('Saved: ' + (d.filename || ''));
+    if (document.getElementById('page-rec').classList.contains('active')) loadRecordings();
+  } else {
+    const r = await fetch('/api/record', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'start'})});
+    const d = await r.json();
+    if (d.ok !== false) {
+      _recActive = true;
+      _recSecs = 0;
+      btn.classList.add('recording');
+      _recTimer = setInterval(() => {
+        _recSecs++;
+        const m = String(Math.floor(_recSecs/60)).padStart(2,'0');
+        const s = String(_recSecs%60).padStart(2,'0');
+        btn.textContent = '⏺ ' + m + ':' + s;
+      }, 1000);
+    }
+  }
+}
+
+async function loadRecordings() {
+  const list = document.getElementById('rec-list');
+  const info = document.getElementById('rec-storage-info');
+  list.innerHTML = '<div class="card" style="text-align:center;color:#8b949e;padding:16px">Laen...</div>';
+  try {
+    const r = await fetch('/api/recordings');
+    const recs = await r.json();
+    if (!recs.length) {
+      list.innerHTML = '<div class="card" style="text-align:center;color:#8b949e;padding:24px">No recordings</div>';
+      info.textContent = '0 recordings';
+      return;
+    }
+    const totalMB = (recs.reduce((a,x)=>a+x.size,0)/1048576).toFixed(1);
+    info.textContent = recs.length + ' recordings • ' + totalMB + ' MB';
+    list.innerHTML = recs.map(rec => {
+      const mb = (rec.size/1048576).toFixed(1);
+      const name = rec.name.replace('rec_','').replace('.mp4','');
+      const dt = name.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, '$3.$2.$1 $4:$5:$6');
+              return '<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
+        + '<div><div style="font-size:0.85rem;font-weight:600">' + dt + '</div>'
+        + '<div style="font-size:0.75rem;color:#8b949e">' + mb + ' MB</div></div>'
+        + '<div style="display:flex;gap:6px">'
+        + '<button class="btn" style="padding:5px 12px;font-size:0.78rem" ontouchstart="openRecPlayer(event,\'' + rec.url + '\',\'' + dt + '\')" onclick="openRecPlayer(event,\'' + rec.url + '\',\'' + dt + \'\');">&#9654;</button>'
+        + '<a href="' + rec.url + '" class="btn sec" style="padding:5px 12px;font-size:0.78rem;text-decoration:none">&#11015;</a>'
+        + '<button class="btn sec" style="padding:5px 12px;font-size:0.78rem" ontouchstart="deleteRec(\'' + rec.name + '\')" onclick="deleteRec(\'' + rec.name + '\');">&#128465;</button>'
+        + '</div></div>';
+    }).join('');
+  } catch(err) {
+    list.innerHTML = '<div class="card" style="text-align:center;color:#ff7878;padding:16px">Viga: ' + err.message + '</div>';
+  }
+}
+
+async function deleteRec(name) {
+  if (!confirm('Delete ' + name + '?')) return;
+  await fetch('/api/recordings/' + name, {method:'DELETE'});
+  loadRecordings();
+}
+
+
+function openRecPlayer(e, url, title) {
+  if (e) e.preventDefault();
+  const modal = document.getElementById('rec-player-modal');
+  const vid = document.getElementById('rec-player-video');
+  const lbl = document.getElementById('rec-player-title');
+  vid.src = url;
+  if (lbl) lbl.textContent = title || '';
+  modal.classList.add('open');
+  vid.play().catch(()=>{});
+}
+
+function closeRecPlayer(e) {
+  if (e) e.preventDefault();
+  const modal = document.getElementById('rec-player-modal');
+  const vid = document.getElementById('rec-player-video');
+  vid.pause();
+  vid.src = '';
+  modal.classList.remove('open');
+}
 </script>
+
+<div id="rec-player-modal">
+  <button id="rec-player-close" ontouchstart="closeRecPlayer(event)" onclick="closeRecPlayer(event)">&#10005;</button>
+  <video id="rec-player-video" controls playsinline preload="metadata"></video>
+  <div id="rec-player-title"></div>
+</div>
 </body>
 </html>

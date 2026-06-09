@@ -6,7 +6,7 @@ from channel_mapper import ChannelMapper, PACKET_SIZE, LEGACY_SIZE
 log = logging.getLogger("controller_receiver")
 
 FAILSAFE_TIMEOUT  = 1.0
-FAILSAFE_CHANNELS = tuple([0.0, 0.0, -1.0, 0.0] + [-1.0] * 12)  # ch3=throttle min, ch4=yaw center
+FAILSAFE_CHANNELS = tuple([0.0, 0.0, 0.0, -1.0] + [-1.0] * 12)  # ch3=yaw center(PPM CH3->INAV YAW), ch4=throttle min(PPM CH4->INAV THR)
 
 
 class ControllerReceiver:
@@ -82,3 +82,4 @@ class _UDPProtocol(asyncio.DatagramProtocol):
         channels = self.mapper.parse(data)
         if channels:
             self.elrs.send_channels(channels)
+

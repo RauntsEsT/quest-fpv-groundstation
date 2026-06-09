@@ -59,23 +59,65 @@
         "rate": 1
       },
       "ch3_throttle": {
-        "src": "ly",
+        "src": "lx",
         "invert": false,
-        "expo": 0.0,
+        "expo": 0,
         "rate": 1
       },
       "ch4_yaw": {
-        "src": "lx",
+        "src": "ly",
         "invert": false,
         "expo": 0.3,
         "rate": 1
       }
     },
-    "dead_zone": 0.05,
+    "dead_zone": 0.04,
     "buttons": {
       "ch5": {
         "src": "btn_a",
         "mode": "toggle",
+        "on": 1,
+        "off": -1
+      },
+      "ch6": {
+        "src": "btn_b",
+        "mode": "toggle",
+        "on": 1,
+        "off": -1
+      },
+      "ch7": {
+        "src": "btn_x",
+        "mode": "momentary",
+        "on": 1,
+        "off": -1
+      },
+      "ch8": {
+        "src": "btn_y",
+        "mode": "momentary",
+        "on": 1,
+        "off": -1
+      },
+      "ch9": {
+        "src": "btn_lg",
+        "mode": "toggle",
+        "on": 1,
+        "off": -1
+      },
+      "ch10": {
+        "src": "btn_rg",
+        "mode": "toggle",
+        "on": 1,
+        "off": -1
+      },
+      "ch11": {
+        "src": "btn_lt",
+        "mode": "momentary",
+        "on": 1,
+        "off": -1
+      },
+      "ch12": {
+        "src": "btn_rt",
+        "mode": "momentary",
         "on": 1,
         "off": -1
       }
@@ -83,8 +125,8 @@
     "failsafe": {
       "ch1": 0,
       "ch2": 0,
-      "ch3": -1,
-      "ch4": 0,
+      "ch3": 0,
+      "ch4": -1,
       "ch5": -1,
       "ch6": -1,
       "ch7": -1,

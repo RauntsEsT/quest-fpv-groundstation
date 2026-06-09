@@ -86,7 +86,7 @@ class ChannelMapper:
                 val = -val
             # Map ch name to index
             ch_idx = {"ch1_roll": 0, "ch2_pitch": 1,
-                      "ch3_throttle": 2, "ch4_yaw": 3}.get(ch_name, 0)
+                      "ch3_throttle": 3, "ch4_yaw": 2}.get(ch_name, 0)
             channels[ch_idx] = max(-1.0, min(1.0, val))
 
         # Button channels (CH5-16)
@@ -129,7 +129,7 @@ class ChannelMapper:
             if acfg.get("invert", False):
                 val = -val
             ch_idx = {"ch1_roll": 0, "ch2_pitch": 1,
-                      "ch3_throttle": 2, "ch4_yaw": 3}.get(ch_name, 0)
+                      "ch3_throttle": 3, "ch4_yaw": 2}.get(ch_name, 0)
             channels[ch_idx] = max(-1.0, min(1.0, val))
 
         for ch_name, bcfg in self._cfg["buttons"].items():
