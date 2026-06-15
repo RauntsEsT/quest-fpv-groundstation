@@ -356,12 +356,12 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
         from fastapi.responses import FileResponse
         from video_streamer import RECORDINGS_DIR
         safe = os.path.basename(filename)
-        if not safe.startswith("rec_") or not safe.endswith(".avi"):
+        if not safe.startswith("rec_") or not safe.endswith(".mp4"):
             raise HTTPException(404)
         fpath = os.path.join(RECORDINGS_DIR, safe)
         if not os.path.exists(fpath):
             raise HTTPException(404)
-        return FileResponse(fpath, media_type="video/x-msvideo",
+        return FileResponse(fpath, media_type="video/mp4",
                            filename=safe,
                            headers={"Content-Disposition": f"attachment; filename={safe}"})
 
