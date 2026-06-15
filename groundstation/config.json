@@ -17,13 +17,8 @@
   },
   "telemetry": {
     "drivers": [
-      "crsf",
-      "mavlink"
+      "crsf"
     ],
-    "mavlink": {
-      "port": "/dev/ttyAMA4",
-      "baud": 57600
-    },
     "msp": {
       "port": "/dev/ttyAMA4",
       "baud": 115200
