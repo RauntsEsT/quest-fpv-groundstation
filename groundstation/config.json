@@ -17,7 +17,8 @@
   },
   "telemetry": {
     "drivers": [
-      "crsf"
+      "crsf",
+      "mavlink"
     ],
     "mavlink": {
       "port": "/dev/ttyAMA4",
