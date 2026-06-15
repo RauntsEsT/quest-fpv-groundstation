@@ -482,6 +482,9 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
   <div class="settings-menu-item" id="smenu-ctrl" onclick="showPage('ctrl',null)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/><rect x="2" y="7" width="20" height="10" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>Controller
   </div>
+  <div class="settings-menu-item" id="smenu-switch-gs" style="display:none" onclick="switchGroundstation()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>Vaheta maajaam
+  </div>
 </div>
 
 <!-- bottom nav removed, navigation in #top-bar -->
@@ -556,6 +559,16 @@ function closeSettingsMenu() {
   const settingsBtn = document.getElementById('nav-settings-btn');
   if (settingsBtn && !SETTINGS_PAGES.includes(localStorage.getItem('fpv_tab')))
     settingsBtn.classList.remove('active');
+}
+
+if (window.Capacitor) {
+  const smenu = document.getElementById('smenu-switch-gs');
+  if (smenu) smenu.style.display = '';
+}
+
+function switchGroundstation() {
+  closeSettingsMenu();
+  window.location.href = 'https://localhost/index.html#manage';
 }
 
 function toast(msg,ok=true){
