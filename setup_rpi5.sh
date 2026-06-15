@@ -90,19 +90,24 @@ echo "[6/7] Systemd teenuse loomine..."
 sudo tee /etc/systemd/system/${SERVICE}.service > /dev/null << EOF
 [Unit]
 Description=Quest FPV Ground Station
-After=network.target
-Wants=network.target
+After=network.target network-online.target systemd-udev-settle.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
 User=$USER
 WorkingDirectory=$INSTALL_DIR/groundstation
+ExecStartPre=/bin/sleep 5
 ExecStart=$INSTALL_DIR/venv/bin/python3 main.py
-Restart=always
-RestartSec=5
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=60
 StandardOutput=journal
 StandardError=journal
 Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONFAULTHANDLER=1
 
 [Install]
 WantedBy=multi-user.target
