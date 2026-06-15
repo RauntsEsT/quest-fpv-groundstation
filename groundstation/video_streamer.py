@@ -94,6 +94,7 @@ class VideoStreamer:
         self._subs: list[asyncio.Queue] = []
         self._recorder: MJPEGRecorder | None = None
         self._rec_filename: str = ''
+        self._frameless_restarts: int = 0
 
     def subscribe(self) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=3)
@@ -144,6 +145,7 @@ class VideoStreamer:
                 buf = buf[e + 2:]
                 self._latest_frame = frame
                 self._last_frame_time = time.monotonic()
+                self._frameless_restarts = 0
                 self._push_frame(frame)
 
     async def start(self):
@@ -166,6 +168,7 @@ class VideoStreamer:
         ]
         log.info(f"Video: {self.device} → MJPEG HTTP /video ({self.fps}fps, yadif)")
         asyncio.ensure_future(self._keepalive())
+        asyncio.ensure_future(self._watchdog())
         retry = 0
         while True:
             if not os.path.exists(self.device):
@@ -179,6 +182,7 @@ class VideoStreamer:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.DEVNULL,
                 )
+                self._last_frame_time = time.monotonic()
                 retry = 0
                 await self._read_frames()
                 log.warning("ffmpeg lõpetas — taaskäivitan...")
@@ -197,6 +201,27 @@ class VideoStreamer:
             wait = min(2 * retry, 10)
             log.info(f"Video restart #{retry}, ootan {wait}s...")
             await asyncio.sleep(wait)
+
+    async def _watchdog(self):
+        """Kui ffmpeg jookseb, aga ei toodaja päris kaadreid (signaal puudub/USB
+        kapture kinni), taaskäivita ffmpeg ja lähtesta USB. Kasvav ootetsükkel
+        väldib pidevat USB resetti, kui VTX on lihtsalt välja lülitatud."""
+        while True:
+            await asyncio.sleep(2)
+            if self._proc is None or self._proc.returncode is not None:
+                continue
+            threshold = min(8 + 4 * self._frameless_restarts, 30)
+            if time.monotonic() - self._last_frame_time > threshold:
+                self._frameless_restarts += 1
+                log.warning(
+                    f"Video: pole reaalseid kaadreid {threshold}s — "
+                    f"taaskäivitan ffmpeg + USB reset (#{self._frameless_restarts})"
+                )
+                try:
+                    self._proc.kill()
+                except Exception:
+                    pass
+                await self._usb_reset()
 
     async def _usb_reset(self):
         import fcntl
