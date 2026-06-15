@@ -150,6 +150,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
   <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">LQ</span><span class="hud-val" id="f-lq" style="font-size:0.78rem">—</span></div>
   <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">ALT</span><span class="hud-val" id="f-alt" style="font-size:0.78rem">—</span></div>
   <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">BATT</span><span class="hud-val" id="f-bat" style="font-size:0.78rem">—</span></div>
+  <div class="hud-item"><span class="hud-label" style="font-size:0.55rem">MODE</span><span class="hud-val" id="f-mode" style="font-size:0.78rem">—</span></div>
   <div id="top-bar-spacer"></div>
   <button class="topnav-btn" id="topnav-fly" onclick="showPage('fly',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Fly</button>
   <button class="btn-rec" id="rec-btn" ontouchstart="toggleRec(event)" onclick="toggleRec(event)">&#9210; REC</button>
@@ -1028,11 +1029,11 @@ function updateFlyHud(d) {
   const lqEl = document.getElementById('f-lq');
   lqEl.textContent = d.lq != null ? d.lq+'%' : '—';
   lqEl.className = 'hud-val ' + lqClass(d.lq||0);
-  document.getElementById('f-alt').textContent = t.altitude_rel_m != null ? t.altitude_rel_m+'m' : '—';
+  document.getElementById('f-alt').textContent = t.connected ? t.altitude_rel_m+'m' : '—';
   const batEl = document.getElementById('f-bat');
-  batEl.textContent = t.battery_pct != null ? t.battery_pct+'%' : '—';
-  batEl.className = 'hud-val ' + lqClass(t.battery_pct||0);
-  document.getElementById('f-mode').textContent = t.flight_mode || '—';
+  batEl.textContent = t.connected ? t.battery_pct+'%' : '—';
+  batEl.className = 'hud-val ' + lqClass(t.connected ? t.battery_pct||0 : 0);
+  document.getElementById('f-mode').textContent = t.connected ? (t.flight_mode || '—') : '—';
 }
 
 // Patch ws.onmessage to also update fly HUD
