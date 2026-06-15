@@ -1234,25 +1234,6 @@ document.addEventListener('wheel', e => {
   setVideoZoom(videoZoom + (e.deltaY < 0 ? 0.05 : -0.05));
 }, {passive: false});
 
-// Pinch-to-zoom
-(function() {
-  let initDist = 0, initZoom = 1;
-  document.addEventListener('touchstart', e => {
-    if (!flyTabActive || e.touches.length !== 2) return;
-    initDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY);
-    initZoom = videoZoom;
-  }, {passive: true});
-  document.addEventListener('touchmove', e => {
-    if (!flyTabActive || e.touches.length !== 2) return;
-    const d = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY);
-    if (initDist > 0) setVideoZoom(initZoom * d / initDist);
-  }, {passive: true});
-})();
-
 // Video fit mode
 let videoFit = localStorage.getItem('fpv_video_fit') || 'cover';
 
