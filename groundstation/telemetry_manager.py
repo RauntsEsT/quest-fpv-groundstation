@@ -46,9 +46,15 @@ class TelemetryManager:
         self.merged = TelemetryData()
         configs = configs or {}
         self._drivers: list[TelemetryBase] = []
+        self._drivers_by_name: dict[str, TelemetryBase] = {}
         for name in driver_names:
             kwargs = configs.get(name, {})
-            self._drivers.append(create_driver(name, **kwargs))
+            driver = create_driver(name, **kwargs)
+            self._drivers.append(driver)
+            self._drivers_by_name[name] = driver
+
+    def get_driver(self, name: str) -> TelemetryBase | None:
+        return self._drivers_by_name.get(name)
 
     @classmethod
     def from_env(cls) -> "TelemetryManager":

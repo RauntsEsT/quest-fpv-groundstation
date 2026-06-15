@@ -57,9 +57,11 @@ class CRSFTelemetry(TelemetryBase):
                 d.lat          = lat / 1e7
                 d.lon          = lon / 1e7
                 d.gps_speed_ms = speed / 36.0   # km/h*10 → m/s
+                d.speed_ms     = speed / 36.0
                 d.heading_deg  = heading / 100.0
                 d.altitude_m   = alt / 10.0 - 1000
                 d.satellites   = sats
+                d.gps_fix      = 3 if sats >= 4 else (2 if sats >= 1 else 0)
 
             elif frame_type == CRSF_FRAMETYPE_BATTERY:
                 volt, curr, cap, pct = struct.unpack_from('>HHiB', payload)

@@ -92,8 +92,11 @@ class PPMTransmitter:
 
     def get_status(self) -> dict:
         return {"mode": "ppm", "gpio_pin": self.gpio_pin, "device": None,
-                "link_quality": 0, "rssi_ant1": 0, "rssi_ant2": 0,
-                "snr": 0, "tx_power_mw": 0}
+                "link_quality": self.stats.link_quality,
+                "rssi_ant1": self.stats.rssi_ant1,
+                "rssi_ant2": self.stats.rssi_ant2,
+                "snr": self.stats.snr,
+                "tx_power_mw": self.stats.tx_power_mw}
 
     def get_jitter(self) -> dict:
         j = self._jitter_c

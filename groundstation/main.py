@@ -61,10 +61,16 @@ async def main():
     tx_port = tx_cfg.get('port', TX_PORT)
     tx_baud = tx_cfg.get('baud', TX_BAUD)
 
+    crsf_telem_link = None
     if tx_type == 'ppm':
         gpio_pin = tx_cfg.get('gpio_pin', 18)
         tx = PPMTransmitter(gpio_pin)
-        log.info(f'TX: PPM GPIO{gpio_pin} (puhas PPM, CRSF keelatud)')
+        log.info(f'TX: PPM GPIO{gpio_pin} (RC), CRSF UART {tx_port}@{tx_baud} (telemeetria)')
+        # CRSF-i pin5 (RPi UART) jookseb paralleelselt PPM kanalitega —
+        # handshake_only=True jätab RC kanalite saatmise CRSF-i kaudu vahele
+        # (PPM annab kanalid), aga loeb telemeetria/link-stats kaadrid.
+        crsf_telem_link = CrossfireTX(tx_port, tx_baud)
+        tx.stats = crsf_telem_link.stats
     else:
         tx = CrossfireTX(tx_port, tx_baud)
         log.info(f'TX mode: CRSF on {tx_port}@{tx_baud}')
@@ -74,6 +80,11 @@ async def main():
     telem = TelemetryManager(cfg['telemetry']['drivers'],
                              {k: cfg['telemetry'].get(k, {})
                               for k in cfg['telemetry']['drivers']})
+
+    if crsf_telem_link is not None:
+        crsf_driver = telem.get_driver('crsf')
+        if crsf_driver:
+            crsf_telem_link._telem_feed = crsf_driver.feed
 
     log.info(f'Quest FPV Ground Station — VRX:{cfg["vrx"]["driver"]} '
              f'TX:{tx_type} TELEM:{cfg["telemetry"]["drivers"]}')
@@ -89,15 +100,19 @@ async def main():
     loop.add_signal_handler(signal.SIGTERM, lambda: _on_signal('SIGTERM'))
     loop.add_signal_handler(signal.SIGINT,  lambda: _on_signal('SIGINT'))
 
-    await asyncio.gather(
+    tasks = [
         _restart_critical('tx',   tx.start),
         _restart_critical('ctrl', ctrl.start),
         _log_crash('vrx',   vrx.start),
         _log_crash('video', video.start),
         _log_crash('telem', telem.start),
         _log_crash('web',   lambda: web_server.run(vrx, tx, video, telem, ctrl, port=WEB_PORT)),
-        return_exceptions=True,
-    )
+    ]
+    if crsf_telem_link is not None:
+        tasks.append(_restart_critical(
+            'crsf_telem', lambda: crsf_telem_link.start(handshake_only=True)))
+
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 if __name__ == '__main__':
