@@ -1041,7 +1041,7 @@ const _origConnectWS = connectWS;
 connectWS = function() {
   const ws = new WebSocket('ws://'+location.host+'/ws/status');
   const dot = document.getElementById('dot');
-  ws.onopen=()=>dot.className='dot on';
+  ws.onopen=()=>{dot.className='dot on';const v=document.getElementById('fpv-video');if(v)v.src='/video?'+Date.now();};
   ws.onclose=()=>{dot.className='dot off';setTimeout(connectWS,2000);};
   ws.onmessage=e=>{
     const d=JSON.parse(e.data);
@@ -1561,6 +1561,17 @@ function closeRecPlayer(e) {
   vid.src = '';
   modal.classList.remove('open');
 }
+
+// Video stream auto-reconnect
+(function(){
+  const fpvImg = document.getElementById('fpv-video');
+  if (!fpvImg) return;
+  let _videoErrTimer = null;
+  fpvImg.onerror = function() {
+    clearTimeout(_videoErrTimer);
+    _videoErrTimer = setTimeout(function(){ fpvImg.src='/video?'+Date.now(); }, 2000);
+  };
+})();
 </script>
 
 <div id="rec-player-modal">

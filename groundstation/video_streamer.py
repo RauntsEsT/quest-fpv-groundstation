@@ -157,14 +157,15 @@ class VideoStreamer:
             "-analyzeduration", "0",
             "-f", "v4l2",
             "-input_format", "yuyv422",
+            "-standard", "NTSC",
             "-thread_queue_size", "2",
             "-i", self.device,
-            "-vf", "yadif=0:-1:0,hqdn3d=1:2:0:0,scale=640:-2,format=yuvj420p",
+            "-vf", "hqdn3d=2:2:0:0,scale=640:-2,format=yuvj420p",
             "-f", "mjpeg", "-q:v", "3",
             "-flush_packets", "1",
             "pipe:1",
         ]
-        log.info(f"Video: {self.device} → MJPEG HTTP /video ({self.fps}fps, yadif)")
+        log.info(f"Video: {self.device} → MJPEG HTTP /video ({self.fps}fps, spatial denoise)")
         asyncio.ensure_future(self._keepalive())
         asyncio.ensure_future(self._watchdog())
         retry = 0
