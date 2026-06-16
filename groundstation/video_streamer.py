@@ -157,8 +157,6 @@ class VideoStreamer:
             "-analyzeduration", "0",
             "-f", "v4l2",
             "-input_format", "yuyv422",
-            "-standard", "PAL",
-            "-framerate", str(self.fps),
             "-thread_queue_size", "2",
             "-i", self.device,
             "-vf", "yadif=0:-1:0,hqdn3d=3:3:0:0,scale=640:-2,format=yuvj420p",
