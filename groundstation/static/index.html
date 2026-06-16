@@ -164,7 +164,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 <!-- FLY -->
 <div id="page-fly" class="page">
   <div id="fly-canvas">
-    <img id="fpv-video" src="/video" alt="">
+    <img id="fpv-video" alt="">
 
     <div class="fly-widget" id="widget-stick-l">
       <div class="edit-handle">⠿⠿⠿</div>
@@ -1041,7 +1041,7 @@ const _origConnectWS = connectWS;
 connectWS = function() {
   const ws = new WebSocket('ws://'+location.host+'/ws/status');
   const dot = document.getElementById('dot');
-  ws.onopen=()=>{dot.className='dot on';const v=document.getElementById('fpv-video');if(v)v.src='/video?'+Date.now();};
+  ws.onopen=()=>dot.className='dot on';
   ws.onclose=()=>{dot.className='dot off';setTimeout(connectWS,2000);};
   ws.onmessage=e=>{
     const d=JSON.parse(e.data);
@@ -1562,15 +1562,24 @@ function closeRecPlayer(e) {
   modal.classList.remove('open');
 }
 
-// Video stream auto-reconnect
+// WebSocket video - alati viimane kaader, auto-reconnect
 (function(){
-  const fpvImg = document.getElementById('fpv-video');
-  if (!fpvImg) return;
-  let _videoErrTimer = null;
-  fpvImg.onerror = function() {
-    clearTimeout(_videoErrTimer);
-    _videoErrTimer = setTimeout(function(){ fpvImg.src='/video?'+Date.now(); }, 2000);
-  };
+  let _vws = null, _prevUrl = null;
+  function connectVideoWs() {
+    _vws = new WebSocket('ws://' + location.host + '/ws/video');
+    _vws.binaryType = 'blob';
+    _vws.onmessage = function(e) {
+      const img = document.getElementById('fpv-video');
+      if (!img) return;
+      const url = URL.createObjectURL(e.data);
+      img.src = url;
+      if (_prevUrl) URL.revokeObjectURL(_prevUrl);
+      _prevUrl = url;
+    };
+    _vws.onclose = function() { setTimeout(connectVideoWs, 1000); };
+    _vws.onerror = function() { _vws.close(); };
+  }
+  connectVideoWs();
 })();
 </script>
 

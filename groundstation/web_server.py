@@ -237,6 +237,23 @@ def create_app(vrx, tx, video_streamer, telem=None, ctrl=None):
         return StreamingResponse(
             generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
+
+    @app.websocket("/ws/video")
+    async def websocket_video(ws: WebSocket):
+        await ws.accept()
+        q = video_streamer.subscribe()
+        try:
+            while True:
+                try:
+                    frame = await asyncio.wait_for(q.get(), timeout=5.0)
+                    await ws.send_bytes(frame)
+                except asyncio.TimeoutError:
+                    continue
+                except Exception:
+                    break
+        finally:
+            video_streamer.unsubscribe(q)
+
     SAFE_CH_US = [1500, 1500, 1500, 1000, 1000, 1000, 1000, 1000]
 
     @app.post("/api/test/set")

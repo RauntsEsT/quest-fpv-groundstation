@@ -97,7 +97,7 @@ class VideoStreamer:
         self._frameless_restarts: int = 0
 
     def subscribe(self) -> asyncio.Queue:
-        q: asyncio.Queue = asyncio.Queue(maxsize=3)
+        q: asyncio.Queue = asyncio.Queue(maxsize=1)
         self._subs.append(q)
         return q
 
@@ -158,7 +158,7 @@ class VideoStreamer:
             "-f", "v4l2",
             "-input_format", "yuyv422",
             "-standard", "PAL",
-            "-thread_queue_size", "2",
+            "-thread_queue_size", "1",
             "-i", self.device,
             "-vf", "hqdn3d=2:2:0:0,scale=640:-2,format=yuvj420p",
             "-f", "mjpeg", "-q:v", "3",
