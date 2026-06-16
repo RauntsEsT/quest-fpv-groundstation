@@ -17,7 +17,8 @@
   },
   "telemetry": {
     "drivers": [
-      "crsf"
+      "crsf",
+      "smartport"
     ],
     "msp": {
       "port": "/dev/ttyAMA4",
