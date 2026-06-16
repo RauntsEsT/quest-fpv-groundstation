@@ -159,7 +159,7 @@ class VideoStreamer:
             "-input_format", "yuyv422",
             "-thread_queue_size", "2",
             "-i", self.device,
-            "-vf", "yadif=0:-1:0,hqdn3d=3:3:0:0,scale=640:-2,format=yuvj420p",
+            "-vf", "yadif=0:-1:0,pp=ci,hqdn3d=2:6:2:6,scale=640:-2,format=yuvj420p",
             "-f", "mjpeg", "-q:v", "3",
             "-flush_packets", "1",
             "pipe:1",
