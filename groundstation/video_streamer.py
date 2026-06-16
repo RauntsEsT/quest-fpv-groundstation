@@ -156,7 +156,7 @@ class VideoStreamer:
             "-probesize", "32",
             "-analyzeduration", "0",
             "-f", "v4l2",
-            "-input_format", "mjpeg",
+            "-input_format", "yuyv422",
             "-standard", "NTSC",
             "-thread_queue_size", "2",
             "-i", self.device,
