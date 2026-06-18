@@ -239,6 +239,10 @@ class VideoStreamer:
                             fcntl.ioctl(fd, USBDEVFS_RESET, 0)
                         log.info(f'USB reset: {dev_path}')
                         await asyncio.sleep(2)
+                        proc = await asyncio.create_subprocess_exec(
+                            'v4l2-ctl', '--set-standard=PAL', '-d', '/dev/video0',
+                            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                        await proc.wait()
                         return
                 except Exception:
                     pass
