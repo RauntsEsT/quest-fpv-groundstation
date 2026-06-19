@@ -237,36 +237,38 @@ Kuna RPi5-l pole analoog-sisendeid, kasutame ADS1115 ADC-d.
 
 ---
 
-### 4. Flight Controller Telemetry
+### 4. Flight Controller Telemetry — SmartPort
 
-Connect FC telemetry output to RPi. Supports MAVLink, MSP, CRSF, SmartPort, LTM, HoTT.
+> **⚠ RPi5 / RP1 tähtis erinevus:** BCM2711 dokumentatsioon ütleb uart4=GPIO8/9 ja uart5=GPIO12/13.
+> **RPi5-l (RP1 kiip) on teisiti!** `pinctrl get` kinnitas:
+> - `dtoverlay=uart4` → **GPIO12 (TXD4) + GPIO13 (RXD4)** → `/dev/ttyAMA4`
+> - `dtoverlay=uart2` → GPIO4 (TXD2) + GPIO5 (RXD2) → `/dev/ttyAMA2`
+> Ära usalda BCM2711 GPIO numbreid RPi5-l — kontrolli alati `pinctrl get` käsuga.
 
-#### Option A — UART4 (GPIO8/GPIO9) — `/dev/ttyAMA4`
+#### SmartPort (praegu kasutusel) — UART4 @ GPIO12/13
 
-> **⚠ Conflict:** GPIO8 is also SPI0 CS (RTC6715 VRX). Only use UART4 if NOT using RTC6715 driver.
+SmartPort on **pool-dupleks, inverteeritud** UART 57600 baudiga. Vajalik riistvarainverter (SN74LVC1G04).
 
-| RPi5 Pin | GPIO  | Direction  | FC Pin  | Notes                   |
-|----------|-------|------------|---------|-------------------------|
-| Pin 24   | GPIO8 | RPi → FC   | RX      | Telem UART TX (UART4)   |
-| Pin 21   | GPIO9 | FC → RPi   | TX      | Telem UART RX (UART4)   |
-| Pin 6    | GND   | —          | GND     |                         |
+```
+JR mooduli pin5 (S.Port) → SN74LVC1G04 inverter IN
+SN74LVC1G04 inverter OUT → GPIO13 (Pin 33, RXD4)
+SN74LVC1G04 3.3V         → RPi Pin 17 (3V3)
+SN74LVC1G04 GND          → RPi Pin 39 (GND)
+```
 
-**config.txt:** `dtoverlay=uart4`  
-**config.json:** default port for MAVLink/MSP etc. is `/dev/ttyAMA4`
+| RPi5 Pin | GPIO   | Direction  | Ühendus              | Märkus                          |
+|----------|--------|------------|----------------------|---------------------------------|
+| Pin 33   | GPIO13 | FC → RPi   | Inverter OUT         | SmartPort RX (ttyAMA4 RXD4)    |
+| Pin 32   | GPIO12 | RPi → FC   | (pole ühendatud)     | SmartPort TX — ei kasutata      |
+| Pin 17   | 3V3    | →          | Inverter VCC         | Inverteri toide                 |
+| Pin 39   | GND    | —          | Inverter GND + FC GND| Ühine maandus                   |
 
-#### Option B — UART5 (GPIO12/GPIO13) — `/dev/ttyAMA5` ✅ (recommended with RTC6715)
+**config.txt:** `dtoverlay=uart4`
+**config.json:** `telemetry.smartport.port = /dev/ttyAMA4`, baud 57600
+**Betaflight FC:** Ports → UART X → Telemetry Output → SmartPort
 
-| RPi5 Pin | GPIO   | Direction  | FC Pin  | Notes                   |
-|----------|--------|------------|---------|-------------------------|
-| Pin 32   | GPIO12 | RPi → FC   | RX      | Telem UART TX (UART5)   |
-| Pin 33   | GPIO13 | FC → RPi   | TX      | Telem UART RX (UART5)   |
-| Pin 6    | GND    | —          | GND     |                         |
-
-**config.txt:** `dtoverlay=uart5`  
-**config.json:** change port to `/dev/ttyAMA5` in Telemetry settings tab
-
-> **⚠ Conflict:** GPIO13 is also used by Button Emulation VRX (DOWN button).
-> Do not combine button emulation with UART5.
+> **⚠ Conflict:** GPIO13 on sama mis Button Emulation VRX DOWN nupp.
+> Ära kasuta mõlemat korraga.
 
 ---
 
@@ -284,16 +286,16 @@ Digital VRX HDMI out → HDMI-to-USB capture card → USB-A → RPi5
 
 ## Compatible Configurations (Pin Conflict Matrix)
 
-| VRX Driver    | FC Telemetry Port | Notes                              |
-|---------------|-------------------|------------------------------------|
-| `rtc6715`     | `/dev/ttyAMA5`    | ✅ No conflicts (UART5 = GPIO12/13) |
-| `foxeer_uart` | `/dev/ttyAMA4`    | ✅ No conflicts (UART4 = GPIO8/9)   |
-| `foxeer_uart` | `/dev/ttyAMA5`    | ✅ No conflicts                     |
-| `button`      | `/dev/ttyAMA4`    | ✅ No conflicts (UART4 = GPIO8/9)   |
-| `dummy`       | any               | ✅ No hardware needed               |
-| `walksnail`   | any               | ✅ USB only, no GPIO                |
-| `rtc6715`     | `/dev/ttyAMA4`    | ❌ GPIO8 conflict (SPI CS + UART4 TX)|
-| `button`      | `/dev/ttyAMA5`    | ❌ GPIO13 conflict (BTN_DOWN + UART5 RX)|
+> **RPi5 tegelik UART mapping** (kinnitatud `pinctrl get` käsuga):
+> `dtoverlay=uart4` → GPIO12 (TXD4) + GPIO13 (RXD4) = `/dev/ttyAMA4`
+> BCM2711 dokumentatsioon (uart4=GPIO8/9, uart5=GPIO12/13) EI KEHTI RPi5-l!
+
+| VRX Driver    | FC Telemetry Port | Notes                                    |
+|---------------|-------------------|------------------------------------------|
+| `foxeer_uart` | `/dev/ttyAMA4`    | ✅ Praegu kasutusel (UART4 = GPIO12/13)  |
+| `dummy`       | any               | ✅ No hardware needed                    |
+| `walksnail`   | any               | ✅ USB only, no GPIO                     |
+| `button`      | `/dev/ttyAMA4`    | ❌ GPIO13 conflict (BTN_DOWN + UART4 RX) |
 
 ---
 
