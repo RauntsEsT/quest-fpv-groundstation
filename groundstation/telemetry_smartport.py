@@ -30,7 +30,7 @@ class SmartPortTelemetry(TelemetryBase):
     """
     FrSky SmartPort / FPort telemetry.
     UART: half-duplex, baud 57600
-    Wiring: RPi GPIO12 (TX/RX) → SmartPort pin (single wire, inverted)
+    Wiring: JR-pin5 → inverter → RPi GPIO13 (ttyAMA4 RX)
     Vajalik: signal inverter (transistor või SN74LVC1G04)
 
     Konfiguratsioon FC-s:
