@@ -1,5 +1,28 @@
 # Quest FPV Ground Station — Claude juhised
 
+## ⚡ IGA SESSIOONI ALGUSES — loe tracker seis
+
+Enne kui midagi teed, laadi projekti tracker Supabasest. See näitab mis on blokeeritud, mis töös ja kasutaja märkused:
+
+```powershell
+$r = Invoke-RestMethod -Uri "https://lsdkrmyrgyrayimwndaw.supabase.co/rest/v1/task_states?project_slug=eq.quest-fpv-groundstation&status=neq.pending&select=task_id,status,notes&order=updated_at.desc" -Headers @{ "apikey" = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzZGtybXlyZ3lyYXlpbXduZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTA5MDMsImV4cCI6MjA5ODY2NjkwM30.kVap-MdL_fohoMjRit8EyoNZTIYKNQEF1PzOvzAjmRo"; "Authorization" = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzZGtybXlyZ3lyYXlpbXduZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTA5MDMsImV4cCI6MjA5ODY2NjkwM30.kVap-MdL_fohoMjRit8EyoNZTIYKNQEF1PzOvzAjmRo" }; $r | ConvertTo-Json
+```
+
+Või Bashis (RPi SSH kaudu):
+```bash
+curl -s "https://lsdkrmyrgyrayimwndaw.supabase.co/rest/v1/task_states?project_slug=eq.quest-fpv-groundstation&status=neq.pending&select=task_id,status,notes&order=updated_at.desc" \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzZGtybXlyZ3lyYXlpbXduZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTA5MDMsImV4cCI6MjA5ODY2NjkwM30.kVap-MdL_fohoMjRit8EyoNZTIYKNQEF1PzOvzAjmRo" | python3 -m json.tool
+```
+
+**Loe tulemusest:**
+- `status: "blocked"` → kasutaja on takistusele otsa jooksnud, märkus selgitab mida
+- `status: "inprogress"` → aktiivne töö, märkus näitab viimast seisu
+- `notes` väli → kasutaja kommentaarid, võivad sisaldada kriitilisi fakte
+
+Tracker veebis: **https://curious-hamster-51f166.netlify.app**
+
+---
+
 ## Projekt
 RPi5-põhine FPV droonikontrolli maajaam. RPi5 on samaaegselt TX (PPM/CRSF), video vastuvõtja ja veebiserver.
 
