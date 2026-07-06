@@ -21,6 +21,43 @@ curl -s "https://lsdkrmyrgyrayimwndaw.supabase.co/rest/v1/task_states?project_sl
 
 Tracker veebis: **https://curious-hamster-51f166.netlify.app**
 
+## 💬 Kahepoolne vestlus (task_comments) — KONTROLLI IGA SESSIOONI ALGUSES
+
+Tracker'is saab iga ülesande all kirjutada vabas vormis muudatussoovi ("vestlus").
+Need on eraldi tabelis ja on kahepoolse suhtluse kanal — kasutaja kirjutab
+soovi, Claude teeb muudatuse ja vastab samasse lõime.
+
+**1. Loe lahendamata soovid:**
+```bash
+curl -s "https://lsdkrmyrgyrayimwndaw.supabase.co/rest/v1/task_comments?project_slug=eq.quest-fpv-groundstation&author=eq.user&resolved=eq.false&select=id,task_id,body,created_at&order=created_at.asc" \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzZGtybXlyZ3lyYXlpbXduZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTA5MDMsImV4cCI6MjA5ODY2NjkwM30.kVap-MdL_fohoMjRit8EyoNZTIYKNQEF1PzOvzAjmRo" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzZGtybXlyZ3lyYXlpbXduZGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwOTA5MDMsImV4cCI6MjA5ODY2NjkwM30.kVap-MdL_fohoMjRit8EyoNZTIYKNQEF1PzOvzAjmRo"
+```
+Iga rida = `task_id` juurde kirjutatud muudatussoov, mida pole veel käsitletud.
+Käsitle neid **enne** üldise "Järgmised sammud" nimekirja järgimist — need on
+kasutaja otsene, värske sisend.
+
+**2. Kui muudatus on tehtud, vasta lõimes JA märgi lahendatuks:**
+```bash
+# a) Claude vastus samasse vestlusesse
+curl -s -X POST "https://lsdkrmyrgyrayimwndaw.supabase.co/rest/v1/task_comments" \
+  -H "apikey: <sama key>" -H "Authorization: Bearer <sama key>" \
+  -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+  -d '{"project_slug":"quest-fpv-groundstation","task_id":"<task_id>","author":"claude","body":"Tehtud: <lühikokkuvõte muudatusest, commit hash kui asjakohane>","resolved":true}'
+
+# b) originaalne soov lahendatuks
+curl -s -X PATCH "https://lsdkrmyrgyrayimwndaw.supabase.co/rest/v1/task_comments?id=eq.<id>" \
+  -H "apikey: <sama key>" -H "Authorization: Bearer <sama key>" \
+  -H "Content-Type: application/json" \
+  -d '{"resolved":true}'
+```
+Kui soovi ei saa (veel) täita — vasta ikkagi lõimes selgitusega miks, aga jäta
+`resolved:false`, et see jääks tracker'is silmatorkavaks kuni päriselt lahendatud.
+
+**Tabel eeldab, et migratsioon on käivitatud:** `supabase_task_comments.sql`
+(repo juurkataloogis). Kui `task_comments` päring annab 404/tabelit pole,
+see samm on tegemata — teavita kasutajat.
+
 ---
 
 ## Projekt

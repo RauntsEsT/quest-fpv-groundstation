@@ -99,6 +99,21 @@
   .task-notes textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px; font-size: 12px; font-family: inherit; resize: vertical; min-height: 60px; outline: none; }
   .task-notes textarea:focus { border-color: var(--blue); }
 
+  .task-note-btn.has-open { color: var(--orange); border-color: var(--orange); }
+  .task-chat { display: none; margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+  .task-chat.open { display: block; }
+  .chat-thread { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .chat-empty { font-size: 12px; color: var(--text-dim); padding: 4px 0; }
+  .chat-msg { padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 1.4; max-width: 90%; }
+  .chat-msg .chat-author { font-size: 10px; font-weight: 600; margin-bottom: 2px; opacity: 0.7; }
+  .chat-msg .chat-time { font-size: 10px; opacity: 0.5; margin-top: 2px; }
+  .chat-msg.chat-user { align-self: flex-end; background: #1a3a5c; color: var(--text-bright); }
+  .chat-msg.chat-claude { align-self: flex-start; background: var(--green-dim); color: var(--text-bright); }
+  .chat-msg.chat-user.chat-unresolved { border: 1px solid var(--orange); }
+  .chat-input-row { display: flex; gap: 6px; }
+  .chat-input-row input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 7px 10px; font-size: 12px; outline: none; }
+  .chat-input-row input:focus { border-color: var(--blue); }
+
   .stats-bar { display: flex; gap: 16px; padding: 12px 20px; background: var(--card); border-top: 1px solid var(--border); flex-wrap: wrap; }
   .stat { display: flex; align-items: center; gap: 6px; font-size: 12px; }
   .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -286,8 +301,13 @@ const PHASE_COLORS = { done: '#3fb950', inprogress: '#58a6ff', pending: '#d29922
 
 let sb = null;
 let state = {};
+let comments = {};
 let currentFilter = 'all';
 let syncMode = 'local';
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
 
 function showLogin() { document.getElementById('login-screen').classList.add('active'); }
 function hideLogin() { document.getElementById('login-screen').classList.remove('active'); }
@@ -305,6 +325,7 @@ async function doLogin() {
   if (error) { err.textContent = error.message; return; }
   hideLogin();
   await loadStateFromSupabase();
+  await loadComments();
   render();
 }
 
@@ -362,6 +383,66 @@ function loadStateLocal() {
   setSyncStatus('local', '⚠ Ainult lokaalne');
 }
 function saveStateLocal() { localStorage.setItem('fpv_gs_state', JSON.stringify(state)); }
+
+async function loadComments() {
+  if (!sb) return;
+  try {
+    const { data, error } = await sb.from('task_comments')
+      .select('id,task_id,author,body,resolved,created_at')
+      .eq('project_slug', PROJECT_SLUG)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    comments = {};
+    (data || []).forEach(row => {
+      if (!comments[row.task_id]) comments[row.task_id] = [];
+      comments[row.task_id].push(row);
+    });
+  } catch (e) {
+    console.error('Vestluse laadimine ebaõnnestus:', e.message);
+  }
+}
+
+function getComments(taskId) { return comments[taskId] || []; }
+function hasOpenComment(taskId) { return getComments(taskId).some(c => c.author === 'user' && !c.resolved); }
+
+function toggleChat(taskId) {
+  const el = document.getElementById('chat_' + taskId);
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) {
+    const t = el.querySelector('.chat-thread');
+    if (t) t.scrollTop = t.scrollHeight;
+    const input = document.getElementById('chat_input_' + taskId);
+    if (input) input.focus();
+  }
+}
+
+async function sendComment(taskId) {
+  if (!sb) { alert('Vestlus vajab Supabase ühendust (logi sisse).'); return; }
+  const input = document.getElementById('chat_input_' + taskId);
+  const body = input.value.trim();
+  if (!body) return;
+  input.disabled = true;
+  try {
+    const { data, error } = await sb.from('task_comments').insert({
+      project_slug: PROJECT_SLUG, task_id: taskId, author: 'user', body, resolved: false
+    }).select();
+    if (error) throw error;
+    if (!comments[taskId]) comments[taskId] = [];
+    comments[taskId].push(data[0]);
+    input.value = '';
+    render();
+    const el = document.getElementById('chat_' + taskId);
+    if (el) {
+      el.classList.add('open');
+      const t = el.querySelector('.chat-thread');
+      if (t) t.scrollTop = t.scrollHeight;
+    }
+  } catch (e) {
+    alert('Saatmine ebaõnnestus: ' + e.message);
+  } finally {
+    input.disabled = false;
+  }
+}
 
 function getStatus(taskId, defaultStatus) { return (state[taskId] && state[taskId].status) || defaultStatus; }
 function getNotes(taskId) { return (state[taskId] && state[taskId].notes) || ''; }
@@ -445,6 +526,24 @@ function render() {
       const hasNotes = notes.trim().length > 0;
       const guideBtn = task.guide ? `<a href="${task.guide}" target="_blank" class="task-link">📖 Juhend</a>` : '';
       const notesBtnClass = 'task-note-btn' + (hasNotes ? ' has-note' : '');
+
+      const taskComments = getComments(task.id);
+      const openChat = hasOpenComment(task.id);
+      const chatBtnClass = 'task-note-btn' + (openChat ? ' has-open' : (taskComments.length ? ' has-note' : ''));
+      const chatLabel = taskComments.length ? `💬 Vestlus (${taskComments.length})` : '💬 Vestlus';
+      const chatThread = taskComments.length
+        ? taskComments.map(c => {
+            const who = c.author === 'user' ? 'Sina' : 'Claude';
+            const unresolved = c.author === 'user' && !c.resolved ? ' chat-unresolved' : '';
+            const time = new Date(c.created_at).toLocaleString('et-EE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+            return `<div class="chat-msg chat-${c.author}${unresolved}">
+              <div class="chat-author">${who}${c.author === 'user' && !c.resolved ? ' · ootab vastust' : ''}</div>
+              <div class="chat-text">${escapeHtml(c.body)}</div>
+              <div class="chat-time">${time}</div>
+            </div>`;
+          }).join('')
+        : '<div class="chat-empty">Vestlust pole veel. Kirjuta siia muudatussoov ja Claude teeb selle projektis järgmisel sessioonil.</div>';
+
       return `<div class="task status-${status}" data-status="${status}" data-id="${task.id}">
         <button class="task-status-btn" onclick="cycleStatus('${task.id}','${task.status}')" title="${STATUS_LABELS[status]} → klõpsa">${STATUS_ICONS[status]}</button>
         <div class="task-body">
@@ -453,9 +552,17 @@ function render() {
           <div class="task-actions">
             ${guideBtn}
             <button class="${notesBtnClass}" onclick="toggleNotes('${task.id}')">${hasNotes ? '📝 Märkus' : '+ Märkus'}</button>
+            <button class="${chatBtnClass}" onclick="toggleChat('${task.id}')">${chatLabel}</button>
           </div>
           <div class="task-notes${hasNotes ? ' open' : ''}" id="notes_${task.id}">
             <textarea placeholder="Märkus..." onchange="saveNote('${task.id}', this.value)">${notes}</textarea>
+          </div>
+          <div class="task-chat" id="chat_${task.id}">
+            <div class="chat-thread">${chatThread}</div>
+            <div class="chat-input-row">
+              <input type="text" id="chat_input_${task.id}" placeholder="Kirjuta muudatussoov..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendComment('${task.id}');}" />
+              <button class="btn btn-green" onclick="sendComment('${task.id}')">➤</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -544,6 +651,7 @@ async function init() {
   if (session) {
     hideLogin();
     await loadStateFromSupabase();
+    await loadComments();
     render();
   } else {
     setSyncStatus('local', '🔒 Logi sisse');
