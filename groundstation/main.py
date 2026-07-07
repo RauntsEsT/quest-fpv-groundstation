@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO,
     format='%(asctime)s %(name)-20s %(levelname)s %(message)s')
 log = logging.getLogger('main')
 
-VIDEO_DEVICE  = os.getenv('VIDEO_DEVICE',  '/dev/video0')
+VIDEO_DEVICE  = os.getenv('VIDEO_DEVICE',  '/dev/easycap')
 VIDEO_PORT    = int(os.getenv('VIDEO_PORT',    '5006'))
 TX_PORT       = os.getenv('TX_PORT',       '/dev/ttyAMA0')
 TX_BAUD       = int(os.getenv('TX_BAUD',       '400000'))
@@ -100,18 +100,22 @@ async def main():
     loop.add_signal_handler(signal.SIGTERM, lambda: _on_signal('SIGTERM'))
     loop.add_signal_handler(signal.SIGINT,  lambda: _on_signal('SIGINT'))
 
+    web_task = asyncio.create_task(
+        web_server.run(vrx, tx, video, telem, ctrl, port=WEB_PORT))
+    await asyncio.sleep(1)
+
     tasks = [
         _restart_critical('tx',   tx.start),
         _restart_critical('ctrl', ctrl.start),
         _log_crash('vrx',   vrx.start),
         _log_crash('video', video.start),
         _log_crash('telem', telem.start),
-        _log_crash('web',   lambda: web_server.run(vrx, tx, video, telem, ctrl, port=WEB_PORT)),
     ]
     if crsf_telem_link is not None:
         tasks.append(_restart_critical(
             'crsf_telem', lambda: crsf_telem_link.start(handshake_only=True)))
 
+    tasks.append(web_task)
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
