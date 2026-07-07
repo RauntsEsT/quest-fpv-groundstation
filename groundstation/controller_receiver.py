@@ -43,9 +43,13 @@ class ControllerReceiver:
     async def start(self):
         log.info(f"Listening for controller data on UDP port {self.port}")
         loop = asyncio.get_event_loop()
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("0.0.0.0", self.port))
         transport, _ = await loop.create_datagram_endpoint(
             lambda: _UDPProtocol(self.elrs, self.mapper, self),
-            local_addr=("0.0.0.0", self.port),
+            sock=sock,
         )
         wdog = asyncio.create_task(self._failsafe_watchdog())
         wdog.add_done_callback(
