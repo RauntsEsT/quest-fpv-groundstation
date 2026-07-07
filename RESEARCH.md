@@ -194,3 +194,41 @@ Failid: `/usr/local/bin/fallback-ap.sh`, `/usr/local/bin/retry-station.sh`,
 `/etc/NetworkManager/dispatcher.d/99-fallback-ap`,
 `/etc/systemd/system/retry-station.{service,timer}` (kõik ainult RPi-l,
 mitte git-repos — vt käesolevat sektsiooni koodinäidete jaoks).
+
+---
+
+## 10. RC-link katki pärast SmartPort kiibi lisamist (POOLELI, 2026-07-07)
+
+**Sümptom:** enne SN74LVC1G04 inverter-kiibi lisamist (SmartPort telemeetria
+jaoks) töötas RC-juhtimine täielikult. Pärast kiibi lisamist: `check_link.py`
+(MSP otseühendus FC-ga USB kaudu) näitab järjekindlalt külmunud failsafe
+väärtusi `[1500,1500,1500,885,1275,1500,1500,1500]` — identsed igal testil.
+FC OSD näitab otse "NO RC LINK".
+
+**Ümber lükatud (testitud, EI OLE põhjus):**
+- Jagatud GND pin 6 (Foxeer VRX + SmartPort inverter) — parandatud pin 39-le, ei mõjutanud
+- Kiip ise — täielikult lahti ühendatud, tulemus identne
+- Solder bridge JR pin1↔pin5 vahel — visuaalselt puhas
+- INAV Receiver Mode/Provider — Serial+CRSF, kinnitatud õige
+- RF-link/binding — Crossfire TX ja drooni RX LED-id mõlemad rohelised/püsivad
+- **Otsustav test:** JR-moodul päris raadiopuldi külge → droon lendab normaalselt.
+  Probleem on 100% isoleeritud RPi↔JR-moodul liidesesse (PPM sisend + CRSF väljund).
+
+**Leitud ja parandatud, aga ei lahendanud lõplikult:** GPIO18 (RPi pin 12,
+tegelik PPM väljund) oli ühendamata. JR mooduli pin 1 (peaks olema PPM
+sisend) oli ühendatud GPIO14/15 (pin 8/10, tarkvaras CRSF-telemeetria UART)
+külge — PPM ja CRSF liinid olid ära vahetatud. Parandatud vastavalt
+dokumenteeritud skeemile (vt sektsioon 4 ja "Crossfire TX ühendus" ülalpool),
+aga test pärast parandust näitas täpselt sama tulemust.
+
+**Järgmine samm:** TBS Agent — kontrolli, kas Crossfire TX moodulil endal
+(EEPROM-i seade, mitte juhtmestik) on konfigureeritud RC sisendi tüüp PPM
+peale. Kui moodul ootab mõnda muud protokolli pin1-l, ignoreerib see
+korrektset PPM-signaali sõltumata juhtmestikust.
+
+**NB dokumentatsiooni usaldusväärsuse kohta:** kasutaja kahtlustab, et mõni
+varasem sessioon võis GitHubist loetud memory põhjal "taastada" vanema
+juhtmestiku, kirjutades üle hilisemad dokumenteerimata parandused tehtud
+tööjuures. Enne järgmisi soovitusi kontrolli alati, mis on FÜÜSILISELT
+praegu ühendatud — ära eelda, et dokumenteeritud pinout kajastab kõige
+hilisemat töötavat seisu.
