@@ -164,7 +164,7 @@ input[type=range]{width:100%;accent-color:#58a6ff;margin-top:4px}
 <!-- FLY -->
 <div id="page-fly" class="page">
   <div id="fly-canvas">
-    <img id="fpv-video" src="/video" alt="">
+    <img id="fpv-video" alt="">
 
     <div class="fly-widget" id="widget-stick-l">
       <div class="edit-handle">⠿⠿⠿</div>
@@ -1561,6 +1561,26 @@ function closeRecPlayer(e) {
   vid.src = '';
   modal.classList.remove('open');
 }
+
+// WebSocket video - alati viimane kaader, auto-reconnect
+(function(){
+  let _vws = null, _prevUrl = null;
+  function connectVideoWs() {
+    _vws = new WebSocket('ws://' + location.host + '/ws/video');
+    _vws.binaryType = 'blob';
+    _vws.onmessage = function(e) {
+      const img = document.getElementById('fpv-video');
+      if (!img) return;
+      const url = URL.createObjectURL(e.data);
+      img.src = url;
+      if (_prevUrl) URL.revokeObjectURL(_prevUrl);
+      _prevUrl = url;
+    };
+    _vws.onclose = function() { setTimeout(connectVideoWs, 1000); };
+    _vws.onerror = function() { _vws.close(); };
+  }
+  connectVideoWs();
+})();
 </script>
 
 <div id="rec-player-modal">

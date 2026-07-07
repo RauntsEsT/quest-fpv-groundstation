@@ -4,8 +4,8 @@
     "options": {
       "port": "/dev/ttyAMA2"
     },
-    "band": "F",
-    "channel": 7,
+    "band": "B",
+    "channel": 5,
     "port": "/dev/ttyAMA2",
     "baud": 115200
   },
@@ -20,6 +20,10 @@
       "crsf",
       "smartport"
     ],
+    "mavlink": {
+      "port": "/dev/ttyAMA4",
+      "baud": 57600
+    },
     "msp": {
       "port": "/dev/ttyAMA4",
       "baud": 115200

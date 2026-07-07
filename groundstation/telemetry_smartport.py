@@ -96,7 +96,7 @@ class SmartPortTelemetry(TelemetryBase):
     async def _read_loop(self):
         buf = bytearray()
         while True:
-            data = self._ser.read(64)
+            data = await asyncio.get_event_loop().run_in_executor(None, self._ser.read, 64)
             if data:
                 buf.extend(data)
                 # Parse SmartPort frames (0x7E + sensor_id 2B + value 4B + CRC)
