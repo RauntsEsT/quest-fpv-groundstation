@@ -142,3 +142,55 @@ RPi5 ← (USB /dev/video0) ← EasyCap ← VRX composite out  [Video]
 **Teenus:** `quest-groundstation.service`  
 **Logid:** `journalctl -u quest-groundstation -n 50`  
 **Web UI:** `http://192.168.1.145:8080`
+
+---
+
+## 9. WiFi Fallback-AP Sundlülituse Bug (LAHENDATUD, 2026-07-07)
+
+**Sümptom:** RPi lülitus EWG (töövõrgu) WiFi-lt korduvalt hotspot-režiimi
+(FPV-Ground, 10.0.0.1) tagasi, isegi kui EWG-ga oli äsja edukalt ühendutud
+ja signaal oli tugev (100%). Restart aitas ajutiselt, aga probleem kordus
+tavaliselt ~30-50s jooksul pärast bootimist.
+
+**Juurpõhjus:** `/usr/local/bin/fallback-ap.sh` (boot-aegne oneshot teenus,
+`fallback-ap.service`) ja `/etc/NetworkManager/dispatcher.d/99-fallback-ap`
+(dispatcher hook) kontrollisid aktiivset WiFi-ühendust command'iga:
+```bash
+nmcli -t -f NAME,TYPE,DEVICE connection show --active | grep wifi
+```
+`nmcli` näitab WiFi-ühenduse TYPE väljal `802-11-wireless`, mitte `wifi` —
+`grep wifi` ei leidnud SEDA KUNAGI, mistõttu skript arvas alati, et
+stations-ühendust pole, ja:
+1. `fallback-ap.sh` lülitas 30s pärast bootimist **sundkorras** hotspoti
+   sisse, isegi kui EWG oli juba edukalt ühendunud (NetworkManageri
+   autoconnect töötas kiiremini kui 30s, aga fallback-skript ei
+   tuvastanud seda ja lülitas selle üle kirjutades ümber).
+2. Dispatcher (`99-fallback-ap`) tekitas lisaks lõputu tsükli: hotspoti
+   sisselülitamine tekitab enda `wlan0 down` sündmuse → dispatcher käivitub
+   uuesti → sama vale kontroll → toob hotspoti "uuesti" üles → tekitab jälle
+   `wlan0 down` → ... (logides nähtav "WiFi lost — starting AP" iga ~6s).
+
+**Fix:** vahetati kontroll usaldusväärsema vastu, mis loeb otse DEVICE=wlan0
+välja (TYPE-le ei tugine):
+```bash
+nmcli -t -f NAME,DEVICE connection show --active | grep ':wlan0$' | cut -d: -f1
+```
+Dispatcher lisaks kontrollib, kas aktiivne ühendus on juba `FPV-Hotspot` ise
+(enda tekitatud `down` sündmus) ja väljub vaikselt, ilma taas `nmcli
+connection up` käivitamata — see katkestab tsükli.
+
+Boot-aegne ooteaeg tõsteti `WAIT=30` → `WAIT=45` (EWG on mesh mitme
+pöörduspunktiga, assotsieerumine võib mõni kord kauem aega võtta).
+
+Lisaks lisati `retry-station.timer` (systemd timer, iga 2 min, `OnBootSec=90`)
++ `retry-station.service`, mis hotspot-režiimis olles skannib kas `EWG` või
+`Kirsikivi` on leviala sees ning proovib automaatselt tagasi lülituda —
+ilma käsitsi restardita, kui WiFi taastub.
+
+**Testitud:** 2 järjestikust reboot-tsüklit, stabiilne EWG-ühendus 4+ minutit
+ilma katkestusteta (varem katkes garanteeritult ~50s juures).
+
+Failid: `/usr/local/bin/fallback-ap.sh`, `/usr/local/bin/retry-station.sh`,
+`/etc/NetworkManager/dispatcher.d/99-fallback-ap`,
+`/etc/systemd/system/retry-station.{service,timer}` (kõik ainult RPi-l,
+mitte git-repos — vt käesolevat sektsiooni koodinäidete jaoks).
