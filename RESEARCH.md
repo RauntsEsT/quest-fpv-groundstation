@@ -232,3 +232,65 @@ juhtmestiku, kirjutades üle hilisemad dokumenteerimata parandused tehtud
 tööjuures. Enne järgmisi soovitusi kontrolli alati, mis on FÜÜSILISELT
 praegu ühendatud — ära eelda, et dokumenteeritud pinout kajastab kõige
 hilisemat töötavat seisu.
+
+### Jätk (2026-07-08): TBS Agent live diagnostika + EdgeTX lähtekoodi uurimine
+
+**TBS Agent Desktop** (v4.5.1, ühendatud USB kaudu mooduliga "XF microTX")
+annab otsest, usaldusväärset infot mooduli enda kohta — palju parem
+diagnostikakanal kui FC-MSP ringtee:
+- **ABOUT leht → "RC Input" väli näitab reaalajas "No Signal!"** — otse
+  moodulilt endalt, kinnitatud samaaegselt kui RPi PPM-juhe oli füüsiliselt
+  ühendatud JA juhet liigutati/kontakti kontrolliti — välistab lahtise
+  kontakti, moodul lihtsalt ei tunne signaali ära.
+- **TEAM RACING leht → "OTx Model ID: Off"** — Model Match/Model ID
+  aktivatsiooni käepigistus EI ole aktiivne ega blokeeri midagi. See
+  välistab lõplikult varasema "Model ID käepigistus vajalik RF
+  aktiveerimiseks" hüpoteesi.
+- TBS Agenti menüüstruktuur mooduli kohta (tõeline, päriselt nähtud):
+  ROOT (Bind, Set Failsafe), RADIO SETTINGS (Region, Frequency, Max Power,
+  Dyn. Power, Power Switch, Encryption, Op. Mode), MAVLINK, VIDEO TX,
+  TEAM RACING (Pri/Sec SW+Type, Curr. Range, OTx Model ID), ABOUT
+  (Firmware/Hardware/Bootloader/Serial/RC Input/User ID). **Mingit
+  "Model Match" toggle't ega "RC Input Protocol" valikut selles liideses
+  ei eksisteeri** — varasem oletus sellise seade olemasolust oli väär.
+
+**Ümber lükatud täiendavalt (kõvade tõenditega, mitte oletusega):**
+- **Signaali ajastus/polaarsus vale:** `ppm_timing.c` (tegelik PPM-laine
+  genereerimise C-kood) ja `ppm_tx.py` parameetrid (300us pulss, 22.5ms
+  raam, 8 kanalit) on muutumatud alates 2026-06-09 — samast kuupäevast, mil
+  RC-link kinnitati MSP-mõõtmisega töötavaks. Kood, mis 9. juunil töötas,
+  ei saa olla vale ajastuse/polaarsuse tõttu vigane täna.
+- **EdgeTX lähtekoodi uurimine** (agent, 2026-07-08, github.com/EdgeTX/edgetx
+  `radio/src/pulses/ppm.cpp`, `crossfire.cpp`, `hal/module_port.h`):
+  `ppmInit()`/`ppmSendPulses()` ei sisalda MINGIT käepigistust, soojenemis-
+  perioodi ega miinimumkaadrite nõuet — PPM väljund algab kohe pärast
+  taimeri seadistust. Model ID/ping käepigistus (`crossfire.cpp`) eksisteerib
+  AINULT CRSF-seerianumbri draiveri jaoks, mitte PPM draiveri jaoks —
+  kinnitab lõplikult, et Model ID pole PPM-režiimis üldse asjakohane.
+
+**Uus, dokumenteeritud leid (EdgeTX lähtekoodist, mitte oletus):**
+`ppm.cpp` real 111-136: isegi PÄRIS EdgeTX raadio PPM-režiimis kuulab
+raadio SAMAL S.Port pinnil (pin5) telemeetria tagasisidet (M-Link
+inverteeritud või FrSky S.Port normaalne baud) — pin5 on elektriliselt
+"elus" UART-liin nii PPM- kui CRSF-režiimis päris raadiotel. EdgeTX
+enda riistvaranõuete dok (edgetx.org) nõuab S.Port pinnile **10kΩ
+pull-up takistit otse MCU UART TX pinnile, ilma inverterita**. Meie
+SmartPort-i häkk kasutab hoopis inverterit (SN74LVC1G04) selle sama pinni
+peal, ILMA pull-up takistita. Ei ole kinnitatud, et see seletab "No
+Signal" (TBS mooduli enda firmware on suletud lähtekoodiga, valideerimis-
+loogikat ei saa kontrollida), aga see on reaalne, allikaviidatud
+elektriline erinevus dokumenteeritud EdgeTX-nõude ja meie häki vahel,
+mida tasub füüsiliselt kontrollida.
+
+**Endiselt lahtine (kumbagi suunda pole tõestatud):**
+1. **Pinge tase** — RPi GPIO 3.3V vs mida moodul PPM sisendil tegelikult
+   ootab. Ei EdgeTX lähtekood ega TBS dokumentatsioon ei kinnita seda
+   kumbagi pidi otsesõnu PPM/CPPM pinni kohta (ainult S.Port pinni jaoks
+   on olemas selge elektriline spec, vt eespool). Testimata: 5V taseme-
+   nihutaja lisamine PPM-liinile.
+2. **Füüsiline kahjustus mooduli PPM-sisendi enda ringil** kahe päeva
+   jooksul korduva kõrvalasuva jootmise käigus — ei ole kontrollitav
+   ilma teise sisendpordi/mooduli olemasoluta võrdluseks.
+3. **S.Port pinni pull-up takisti puudumine** meie inverteri-häkis (vt
+   eespool) — pole kinnitatud mõju PPM-ile, aga on reaalne, dokumenteeritud
+   lahknevus EdgeTX-i enda nõudest.
